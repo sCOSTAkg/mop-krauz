@@ -191,6 +191,17 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
             telegram.haptic('warning');
         }
     };
+    
+    const resetHabitProgress = () => {
+        if (!editingId || activeTab !== 'HABITS') return;
+        
+        if(confirm('Сбросить стрик и историю выполнения? Это действие нельзя отменить.')) {
+            const updated = habits.map(h => h.id === editingId ? { ...h, streak: 0, completedDates: [] } : h);
+            onUpdateHabits(updated);
+            telegram.haptic('warning');
+            closeModal();
+        }
+    };
 
     const updateGoalProgress = (id: string, amount: number) => {
         const updated = goals.map(g => {
@@ -443,6 +454,16 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                                             ))}
                                         </div>
                                     </div>
+                                    
+                                    {/* RESET STREAK BUTTON (ONLY WHEN EDITING) */}
+                                    {editingId && (
+                                        <button 
+                                            onClick={resetHabitProgress}
+                                            className="w-full py-3 mt-4 bg-red-500/10 text-red-500 rounded-xl font-black uppercase text-[10px] tracking-widest border border-red-500/20 hover:bg-red-500/20 transition-all"
+                                        >
+                                            Сбросить прогресс (Стрик)
+                                        </button>
+                                    )}
                                 </>
                             )}
 
