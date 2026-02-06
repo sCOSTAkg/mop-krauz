@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { AppConfig, Module, UserProgress, UserRole } from '../types';
+import React from 'react';
+import { AppConfig, Module, UserProgress, Material, Stream, CalendarEvent, ArenaScenario } from '../types';
 import { Button } from './Button';
 
 interface AdminDashboardProps {
@@ -8,9 +8,20 @@ interface AdminDashboardProps {
   onUpdateConfig: (newConfig: AppConfig) => void;
   modules: Module[];
   onUpdateModules: (newModules: Module[]) => void;
+  materials: Material[];
+  onUpdateMaterials: (newMaterials: Material[]) => void;
+  streams: Stream[];
+  onUpdateStreams: (newStreams: Stream[]) => void;
+  events: CalendarEvent[];
+  onUpdateEvents: (newEvents: CalendarEvent[]) => void;
+  scenarios: ArenaScenario[];
+  onUpdateScenarios: (newScenarios: ArenaScenario[]) => void;
   users: UserProgress[];
   onUpdateUsers: (newUsers: UserProgress[]) => void;
   currentUser: UserProgress;
+  onUpdateCurrentUser: (user: Partial<UserProgress>) => void;
+  activeSubTab: 'OVERVIEW' | 'COURSE' | 'MATERIALS' | 'STREAMS' | 'USERS' | 'SETTINGS' | 'ARENA' | 'CALENDAR' | 'NEURAL_CORE' | 'DATABASE' | 'DEPLOY';
+  addToast: (type: 'success' | 'error' | 'info', message: string, link?: string) => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
@@ -18,11 +29,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateConfig, 
   modules, 
   onUpdateModules, 
+  materials,
+  onUpdateMaterials,
+  streams,
+  onUpdateStreams,
+  events,
+  onUpdateEvents,
+  scenarios,
+  onUpdateScenarios,
   users, 
   onUpdateUsers,
-  currentUser
+  currentUser,
+  activeSubTab,
+  addToast
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'OVERVIEW' | 'USERS' | 'COURSE' | 'SETTINGS'>('OVERVIEW');
 
   // Helper to calculate total lessons
   const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0);
@@ -61,7 +81,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {users.map((u, idx) => (
                 <div key={idx} className="bg-white dark:bg-[#14161B] p-4 rounded-2xl border border-slate-200 dark:border-white/5 flex justify-between items-center">
                     <div className="flex items-center gap-3">
-                        <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-10 h-10 rounded-full bg-slate-200" />
+                        <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-10 h-10 rounded-full bg-slate-200 object-cover" />
                         <div>
                             <p className="font-bold text-sm text-slate-900 dark:text-white">{u.name}</p>
                             <p className="text-[10px] text-slate-500 uppercase">{u.role} • Lvl {u.level}</p>
@@ -75,8 +95,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                     const updatedUsers = [...users];
                                     updatedUsers[idx] = { ...u, role: newRole };
                                     onUpdateUsers(updatedUsers);
+                                    addToast('info', `Роль изменена на ${newRole}`);
                                 }}
-                                className="px-3 py-1 bg-[#6C5DD3]/10 text-[#6C5DD3] rounded-lg text-[10px] font-bold uppercase"
+                                className="px-3 py-1 bg-[#6C5DD3]/10 text-[#6C5DD3] rounded-lg text-[10px] font-bold uppercase hover:bg-[#6C5DD3]/20 transition-colors"
                             >
                                 {u.role === 'STUDENT' ? 'Make Curator' : 'Demote'}
                             </button>
@@ -112,6 +133,72 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
             ))}
         </div>
+    </div>
+  );
+
+  const renderMaterials = () => (
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-black text-slate-900 dark:text-white">База Знаний</h2>
+        <Button className="!py-2 !px-4 !text-xs" onClick={() => addToast('info', 'Функция добавления в разработке')}>+ Материал</Button>
+      </div>
+      {materials.map(mat => (
+        <div key={mat.id} className="bg-white dark:bg-[#14161B] p-4 rounded-2xl border border-slate-200 dark:border-white/5 flex justify-between items-center">
+           <div>
+             <h4 className="font-bold text-sm dark:text-white">{mat.title}</h4>
+             <p className="text-[10px] text-slate-500 uppercase">{mat.type}</p>
+           </div>
+           <button className="text-red-500 text-xs font-bold uppercase" onClick={() => {
+             onUpdateMaterials(materials.filter(m => m.id !== mat.id));
+             addToast('success', 'Материал удален');
+           }}>Delete</button>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderStreams = () => (
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-black text-slate-900 dark:text-white">Эфиры</h2>
+        <Button className="!py-2 !px-4 !text-xs" onClick={() => addToast('info', 'Функция добавления в разработке')}>+ Стрим</Button>
+      </div>
+      {streams.map(str => (
+        <div key={str.id} className="bg-white dark:bg-[#14161B] p-4 rounded-2xl border border-slate-200 dark:border-white/5 flex justify-between items-center">
+           <div>
+             <h4 className="font-bold text-sm dark:text-white">{str.title}</h4>
+             <p className="text-[10px] text-slate-500 uppercase">{new Date(str.date).toLocaleDateString()} • {str.status}</p>
+           </div>
+           <button className="text-red-500 text-xs font-bold uppercase" onClick={() => {
+             onUpdateStreams(streams.filter(s => s.id !== str.id));
+             addToast('success', 'Стрим удален');
+           }}>Delete</button>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderScenarios = () => (
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-black text-slate-900 dark:text-white">Сценарии Арены</h2>
+        <Button className="!py-2 !px-4 !text-xs" onClick={() => addToast('info', 'Функция добавления в разработке')}>+ Сценарий</Button>
+      </div>
+      {scenarios.map(sc => (
+        <div key={sc.id} className="bg-white dark:bg-[#14161B] p-4 rounded-2xl border border-slate-200 dark:border-white/5">
+           <div className="flex justify-between items-start">
+             <div>
+                <h4 className="font-bold text-sm dark:text-white">{sc.title}</h4>
+                <p className="text-[10px] text-slate-500 uppercase">{sc.difficulty} • {sc.clientRole}</p>
+             </div>
+             <button className="text-red-500 text-xs font-bold uppercase" onClick={() => {
+               onUpdateScenarios(scenarios.filter(s => s.id !== sc.id));
+               addToast('success', 'Сценарий удален');
+             }}>Delete</button>
+           </div>
+           <p className="text-xs text-slate-500 mt-2">{sc.objective}</p>
+        </div>
+      ))}
     </div>
   );
 
@@ -154,6 +241,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     </div>
   );
 
+  // Placeholder for unimplemented tabs
+  const renderPlaceholder = (title: string) => (
+      <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
+          <div className="text-4xl mb-4 opacity-30">🚧</div>
+          <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{title}</h3>
+          <p className="text-xs text-slate-500 uppercase tracking-widest">Раздел в разработке</p>
+      </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#050505] pb-32 pt-[calc(var(--safe-top)+20px)] px-6 transition-colors duration-300">
         <div className="flex justify-between items-center mb-8">
@@ -166,34 +262,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
         </div>
 
-        {/* Sub Navigation */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-8 pb-1">
-            {[
-                { id: 'OVERVIEW', label: 'Обзор' },
-                { id: 'USERS', label: 'Люди' },
-                { id: 'COURSE', label: 'Курс' },
-                { id: 'SETTINGS', label: 'Настройки' }
-            ].map(tab => (
-                <button
-                    key={tab.id}
-                    onClick={() => setActiveSubTab(tab.id as any)}
-                    className={`px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-                        activeSubTab === tab.id 
-                        ? 'bg-[#6C5DD3] text-white shadow-lg shadow-[#6C5DD3]/30' 
-                        : 'bg-white dark:bg-[#14161B] text-slate-500 dark:text-white/50 border border-slate-200 dark:border-white/5'
-                    }`}
-                >
-                    {tab.label}
-                </button>
-            ))}
-        </div>
-
-        {/* Content */}
+        {/* Content Area */}
         <div>
             {activeSubTab === 'OVERVIEW' && renderOverview()}
             {activeSubTab === 'USERS' && renderUsers()}
             {activeSubTab === 'COURSE' && renderCourse()}
+            {activeSubTab === 'MATERIALS' && renderMaterials()}
+            {activeSubTab === 'STREAMS' && renderStreams()}
+            {activeSubTab === 'ARENA' && renderScenarios()}
             {activeSubTab === 'SETTINGS' && renderSettings()}
+            
+            {/* Placeholders for others */}
+            {['CALENDAR', 'NEURAL_CORE', 'DATABASE', 'DEPLOY'].includes(activeSubTab) && renderPlaceholder(activeSubTab)}
         </div>
     </div>
   );

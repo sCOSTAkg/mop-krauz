@@ -250,8 +250,11 @@ export const LessonView: React.FC<LessonViewProps> = ({
                 {/* SKELETON PRELOADER */}
                 {!isVideoReady && (
                     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#14161B]">
-                        <div className="w-16 h-16 rounded-full bg-white/10 mb-4 animate-pulse"></div>
-                        <div className="h-2 w-32 bg-white/10 rounded-full animate-pulse"></div>
+                        <div className="w-16 h-16 rounded-full bg-white/10 mb-4 animate-pulse flex items-center justify-center">
+                            <span className="text-2xl animate-spin">⏳</span>
+                        </div>
+                        <div className="h-2 w-32 bg-white/10 rounded-full animate-pulse mb-2"></div>
+                        <span className="text-[10px] text-white/30 font-black uppercase tracking-widest animate-pulse">Загрузка видео...</span>
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-[shimmer_1.5s_infinite]"></div>
                     </div>
                 )}

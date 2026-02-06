@@ -54,7 +54,7 @@ export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, o
                         relative w-full rounded-[2rem] md:rounded-[2.5rem] p-1 overflow-hidden transition-all duration-300 group select-none
                         ${shakingId === module.id ? 'animate-shake ring-2 ring-red-500/50' : ''}
                         ${isLocked 
-                            ? 'cursor-not-allowed opacity-90' 
+                            ? 'cursor-pointer hover:brightness-75' 
                             : 'hover:scale-[1.01] active:scale-[0.98] cursor-pointer shadow-lg hover:shadow-xl shadow-[#6C5DD3]/10'}
                     `}
                 >
@@ -69,7 +69,7 @@ export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, o
                                     <p className="text-[10px] font-black uppercase tracking-widest">Требуется {module.minLevel} Уровень</p>
                                 </div>
                             ) : (
-                                <div className="bg-black/40 p-3 rounded-full border border-white/10 animate-pulse">
+                                <div className="bg-black/40 p-3 rounded-full border border-white/10 animate-pulse transform group-hover:scale-110 transition-transform">
                                     <span className="text-2xl">🔒</span>
                                 </div>
                             )}
@@ -79,7 +79,7 @@ export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, o
                     {/* Main Card Content */}
                     <div className={`
                         relative min-h-[12rem] h-auto rounded-[1.8rem] md:rounded-[2.3rem] overflow-hidden flex flex-col justify-end p-5 md:p-6 transition-all duration-500
-                        ${isLocked ? 'bg-[#0a0b0d] brightness-50 grayscale-[0.8]' : 'bg-[#14161B]'}
+                        ${isLocked ? 'bg-[#0a0b0d] brightness-50 grayscale-[0.8] group-hover:grayscale-[0.5]' : 'bg-[#14161B]'}
                     `}>
                         
                         {/* Background Image/Gradient */}

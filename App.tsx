@@ -320,19 +320,21 @@ const App: React.FC = () => {
         {toasts.map(t => <Toast key={t.id} toast={t} onRemove={removeToast} onClick={() => handleNavigate(t.link)} />)}
       </div>
 
-      <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">
+      <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative">
         {activeLesson ? (
-           <LessonView 
-             lesson={activeLesson}
-             isCompleted={userProgress.completedLessonIds.includes(activeLesson.id)}
-             onComplete={handleCompleteLesson}
-             onBack={() => setSelectedLessonId(null)}
-             parentModule={activeModule}
-             userProgress={userProgress}
-             onUpdateUser={handleUpdateUser}
-           />
+           <div className="animate-slide-up min-h-full bg-body">
+             <LessonView 
+               lesson={activeLesson}
+               isCompleted={userProgress.completedLessonIds.includes(activeLesson.id)}
+               onComplete={handleCompleteLesson}
+               onBack={() => setSelectedLessonId(null)}
+               parentModule={activeModule}
+               userProgress={userProgress}
+               onUpdateUser={handleUpdateUser}
+             />
+           </div>
         ) : (
-           <>
+           <div key={activeTab} className="animate-fade-in min-h-full">
               {activeTab === Tab.HOME && (
                  <HomeDashboard 
                    onNavigate={setActiveTab}
@@ -396,12 +398,23 @@ const App: React.FC = () => {
                     onUpdateConfig={updateConfig}
                     modules={modules}
                     onUpdateModules={updateModules}
+                    materials={materials}
+                    onUpdateMaterials={updateMaterials}
+                    streams={streams}
+                    onUpdateStreams={updateStreams}
+                    events={events}
+                    onUpdateEvents={updateEvents}
+                    scenarios={scenarios}
+                    onUpdateScenarios={updateScenarios}
                     users={allUsers}
                     onUpdateUsers={handleUpdateAllUsers}
                     currentUser={userProgress}
+                    onUpdateCurrentUser={handleUpdateUser}
+                    activeSubTab={adminSubTab}
+                    addToast={addToast}
                   />
               )}
-           </>
+           </div>
         )}
       </main>
 
