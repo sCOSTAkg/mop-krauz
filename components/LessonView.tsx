@@ -185,7 +185,6 @@ export const LessonView: React.FC<LessonViewProps> = ({
             </div>
 
             <div className="p-4 space-y-4 pb-40 overflow-y-auto">
-                {/* ... (Existing Admin Edit Sections) ... */}
                 {/* 1. Basic Info Section */}
                 <EditSection 
                     title="Основная информация" 
