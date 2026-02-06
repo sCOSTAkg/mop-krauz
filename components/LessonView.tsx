@@ -61,7 +61,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
   lesson, 
   isCompleted, 
   onComplete, 
-  onBack,
+  onBack, 
   onNavigate, 
   parentModule,
   userProgress,
@@ -75,6 +75,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [questionText, setQuestionText] = useState('');
   const [isAsking, setIsAsking] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
 
   // Admin State
   const isAdmin = userProgress.role === 'ADMIN';
@@ -90,6 +91,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
   // Sync edited state when lesson changes
   useEffect(() => {
       setEditedLesson(lesson);
+      setIsVideoReady(false);
       // Reset scroll on lesson change
       const main = document.querySelector('main');
       if (main) main.scrollTop = 0;
@@ -349,11 +351,20 @@ export const LessonView: React.FC<LessonViewProps> = ({
         {/* Video Player Section */}
         {hasVideo && (
             <div className="relative rounded-[2.5rem] overflow-hidden shadow-2xl aspect-video bg-black ring-1 ring-white/5">
+                {!isVideoReady && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-[#16181D] animate-pulse z-10">
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-[#6C5DD3] animate-spin"></div>
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Загрузка данных...</span>
+                        </div>
+                    </div>
+                )}
                 <VideoPlayer 
                     url={videoUrl} 
                     width="100%" 
                     height="100%" 
-                    controls={true} 
+                    controls={true}
+                    onReady={() => setIsVideoReady(true)}
                     config={{ youtube: { playerVars: { origin: window.location.origin }}}}
                 />
             </div>
