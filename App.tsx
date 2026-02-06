@@ -31,7 +31,7 @@ const DEFAULT_CONFIG: AppConfig = {
       googleDriveFolderId: '', 
       crmWebhookUrl: '', 
       aiModelVersion: 'gemini-3-flash-preview',
-      databaseUrl: process.env.DATABASE_URL || "postgresql://neondb_owner:npg_8gtkumX3BAex@ep-raspy-salad-aiz5pncb-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require"
+      databaseUrl: process.env.DATABASE_URL || ""
   },
   features: { enableRealTimeSync: true, autoApproveHomework: false, maintenanceMode: false, allowStudentChat: true, publicLeaderboard: true },
   aiConfig: {
@@ -109,18 +109,16 @@ const App: React.FC = () => {
               return true;
           });
 
-          if (myNotifs.length > prevNotifCount.current) {
-              const latest = myNotifs[myNotifs.length - 1];
-              if (latest && prevNotifCount.current > 0) { 
-                  addToast(latest.type === 'ALERT' ? 'error' : 'info', latest.title, latest.link);
+          // Check for new notifications
+          if (myNotifs.length > notifications.length) {
+              const latest = myNotifs[0]; // Assuming backend returns sorted desc
+              if (latest && latest.id !== notifications[0]?.id) {
+                   addToast(latest.type === 'ALERT' ? 'error' : 'info', latest.title, latest.link);
+                   telegram.haptic('success');
               }
           }
           
-          const localNotifs = notifications.filter(n => n.id.startsWith('local-'));
-          const combined = [...myNotifs, ...localNotifs].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          
-          prevNotifCount.current = myNotifs.length;
-          setNotifications(combined);
+          setNotifications(myNotifs);
           
           // 3. Sync Content (Modules, Materials, Streams, etc.)
           const content = await Backend.fetchAllContent();
@@ -150,20 +148,6 @@ const App: React.FC = () => {
                       level: freshUser.level,
                       xp: freshUser.xp
                   }));
-
-                  if (freshUser.role !== userProgress.role) {
-                      const roleNotif: AppNotification = {
-                          id: `local-role-${Date.now()}`,
-                          title: '🎖 Повышение!',
-                          message: `Командование обновило ваш статус. Ваша новая роль: ${freshUser.role}`,
-                          type: 'SUCCESS',
-                          date: new Date().toISOString(),
-                          isRead: false,
-                          targetRole: freshUser.role
-                      };
-                      setNotifications(prev => [roleNotif, ...prev]);
-                      addToast('success', roleNotif.title);
-                  }
               }
           }
       };
@@ -171,8 +155,8 @@ const App: React.FC = () => {
       // Initial Call
       syncData();
 
-      // Poll every 10 seconds
-      const interval = setInterval(syncData, 10000);
+      // Poll every 5 seconds for faster updates during testing
+      const interval = setInterval(syncData, 5000);
       return () => clearInterval(interval);
   }, [userProgress.isAuthenticated, appConfig, userProgress.role, modules, materials, streams, events, scenarios, allUsers]);
 
@@ -227,20 +211,7 @@ const App: React.FC = () => {
     const tempUser = { ...userProgress, ...userData, isAuthenticated: true };
     setUserProgress(tempUser);
     setShowWelcome(false);
-    
-    if (userData.isRegistration && window.Telegram?.WebApp?.initDataUnsafe?.start_param) {
-        const startParam = window.Telegram.WebApp.initDataUnsafe.start_param;
-        if (startParam.startsWith('ref_')) {
-            const referrerUsername = startParam.replace('ref_', '');
-            const referrer = allUsers.find(u => u.telegramUsername?.toLowerCase() === referrerUsername.toLowerCase());
-            
-            if (referrer) {
-                const result = XPService.addReferral(referrer);
-                Backend.saveUser(result.user);
-                telegram.showAlert(`Вас пригласил ${referrer.name}. Бонус начислен!`, 'Referral');
-            }
-        }
-    }
+    Backend.saveUser(tempUser);
     addToast('success', 'С возвращением, боец!');
   };
 
@@ -252,11 +223,43 @@ const App: React.FC = () => {
 
   const handleUpdateUser = (data: Partial<UserProgress>) => setUserProgress(prev => ({ ...prev, ...data }));
 
+  // --- ADMIN ACTIONS ---
+
+  const handleUpdateModules = (newModules: Module[]) => { 
+      setModules(newModules); 
+      Backend.saveCollection('modules', newModules); 
+  };
+  const handleUpdateMaterials = (newMats: Material[]) => { 
+      setMaterials(newMats); 
+      Backend.saveCollection('materials', newMats); 
+  };
+  const handleUpdateStreams = (newStreams: Stream[]) => { 
+      setStreams(newStreams); 
+      Backend.saveCollection('streams', newStreams); 
+  };
+  const handleUpdateEvents = (newEvents: CalendarEvent[]) => { 
+      setEvents(newEvents); 
+      Backend.saveCollection('events', newEvents); 
+  };
+  const handleUpdateScenarios = (newScenarios: ArenaScenario[]) => { 
+      setScenarios(newScenarios); 
+      Backend.saveCollection('scenarios', newScenarios); 
+  };
+  const handleUpdateConfig = (newConfig: AppConfig) => { 
+      setAppConfig(newConfig); 
+      Backend.saveGlobalConfig(newConfig); 
+  };
   const handleUpdateAllUsers = (newUsers: UserProgress[]) => {
       setAllUsers(newUsers);
       Storage.set('allUsers', newUsers);
-      Backend.saveUser(userProgress); // Sync current
+      // Backend.saveUsers(newUsers) - ideally
   };
+  const handleSendBroadcast = (notification: AppNotification) => {
+      Backend.sendBroadcast(notification);
+      addToast('success', 'Оповещение отправлено');
+  };
+
+  // --- USER ACTIONS ---
 
   const handleCompleteLesson = (lessonId: string, xpBonus: number) => {
       const newXp = userProgress.xp + xpBonus;
@@ -284,14 +287,6 @@ const App: React.FC = () => {
       addToast('success', `+${amount} XP`);
   };
 
-  // --- CONTENT UPDATES (ADMIN) ---
-  const updateModules = (newModules: Module[]) => { setModules(newModules); Backend.saveCollection('modules', newModules); };
-  const updateMaterials = (newMats: Material[]) => { setMaterials(newMats); Backend.saveCollection('materials', newMats); };
-  const updateStreams = (newStreams: Stream[]) => { setStreams(newStreams); Backend.saveCollection('streams', newStreams); };
-  const updateEvents = (newEvents: CalendarEvent[]) => { setEvents(newEvents); Backend.saveCollection('events', newEvents); };
-  const updateScenarios = (newScenarios: ArenaScenario[]) => { setScenarios(newScenarios); Backend.saveCollection('scenarios', newScenarios); };
-  const updateConfig = (newConfig: AppConfig) => { setAppConfig(newConfig); Backend.saveGlobalConfig(newConfig); };
-
   if (!userProgress.isAuthenticated) {
     if (showWelcome) return <Welcome onStart={() => setShowWelcome(false)} />;
     return <Auth onLogin={handleLogin} existingUsers={allUsers} />;
@@ -301,7 +296,6 @@ const App: React.FC = () => {
     <div className="flex flex-col h-[100dvh] bg-body text-text-primary transition-colors duration-300 overflow-hidden">
       
       <SystemHealthAgent config={appConfig.systemAgent} />
-      {/* Chat Assistant Removed as requested */}
 
       <div className="fixed top-[var(--safe-top)] left-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
         {toasts.map(t => <Toast key={t.id} toast={t} onRemove={removeToast} onClick={() => handleNavigate(t.link)} />)}
@@ -382,22 +376,22 @@ const App: React.FC = () => {
               {activeTab === Tab.ADMIN_DASHBOARD && userProgress.role === 'ADMIN' && (
                   <AdminDashboard 
                     config={appConfig}
-                    onUpdateConfig={updateConfig}
+                    onUpdateConfig={handleUpdateConfig}
                     modules={modules}
-                    onUpdateModules={updateModules}
+                    onUpdateModules={handleUpdateModules}
                     materials={materials}
-                    onUpdateMaterials={updateMaterials}
+                    onUpdateMaterials={handleUpdateMaterials}
                     streams={streams}
-                    onUpdateStreams={updateStreams}
+                    onUpdateStreams={handleUpdateStreams}
                     events={events}
-                    onUpdateEvents={updateEvents}
+                    onUpdateEvents={handleUpdateEvents}
                     scenarios={scenarios}
-                    onUpdateScenarios={updateScenarios}
+                    onUpdateScenarios={handleUpdateScenarios}
                     users={allUsers}
                     onUpdateUsers={handleUpdateAllUsers}
                     currentUser={userProgress}
-                    onUpdateCurrentUser={handleUpdateUser}
                     activeSubTab={adminSubTab as any}
+                    onSendBroadcast={handleSendBroadcast}
                     addToast={addToast}
                   />
               )}

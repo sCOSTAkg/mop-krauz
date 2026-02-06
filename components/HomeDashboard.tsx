@@ -139,15 +139,22 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                         <button 
                             onClick={() => {
                                 const firstIncomplete = modules.flatMap(m => m.lessons).find(l => !userProgress.completedLessonIds.includes(l.id));
-                                if(firstIncomplete) onSelectLesson(firstIncomplete);
+                                if(firstIncomplete) {
+                                    onSelectLesson(firstIncomplete);
+                                } else if (modules[0]?.lessons[0]) {
+                                    onSelectLesson(modules[0].lessons[0]);
+                                }
                             }}
                             className="flex-1 flex items-center justify-center gap-3 bg-white text-black py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-[0.97] shadow-xl"
                         >
                             В БОЙ
                         </button>
-                        <div className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-2xl">
-                            ⚔️
-                        </div>
+                        <button 
+                            onClick={() => onNavigate(Tab.NOTEBOOK)}
+                            className="w-14 h-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-2xl active:scale-95 transition-transform"
+                        >
+                            📝
+                        </button>
                     </div>
                 </div>
                 
@@ -173,7 +180,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 ].map((item) => (
                     <button 
                         key={item.id}
-                        onClick={() => onNavigate(item.id)}
+                        onClick={() => { telegram.haptic('selection'); onNavigate(item.id); }}
                         className="bg-surface dark:bg-[#1F2128] p-5 rounded-[2rem] text-left border border-border-color shadow-sm hover:shadow-lg transition-all active:scale-95 group relative overflow-hidden"
                     >
                         <div className={`w-10 h-10 rounded-2xl ${item.color} bg-opacity-10 flex items-center justify-center text-xl mb-3 group-hover:scale-110 transition-transform`}>
@@ -200,7 +207,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     {categories.map(cat => (
                         <button 
                             key={cat.id}
-                            onClick={() => setActiveCategory(cat.id as any)}
+                            onClick={() => { telegram.haptic('selection'); setActiveCategory(cat.id as any); }}
                             className={`
                                 flex items-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase whitespace-nowrap transition-all border flex-shrink-0
                                 ${activeCategory === cat.id 
