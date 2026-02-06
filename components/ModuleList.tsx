@@ -12,16 +12,6 @@ interface ModuleListProps {
 
 export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, onSelectLesson }) => {
   const [shakingId, setShakingId] = useState<string | null>(null);
-  const [transitioningId, setTransitioningId] = useState<string | null>(null);
-
-  const getCategoryConfig = (category: string) => {
-    switch (category) {
-      case 'SALES': return { icon: '💰', color: '#00B050' };
-      case 'PSYCHOLOGY': return { icon: '🧠', color: '#6C5DD3' };
-      case 'TACTICS': return { icon: '⚔️', color: '#FF4B4B' };
-      default: return { icon: '🎓', color: '#94A3B8' };
-    }
-  };
 
   const handleModuleClick = (module: Module, isLocked: boolean) => {
     if (isLocked) {
@@ -31,97 +21,86 @@ export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, o
         return;
     }
     
-    // Start transition animation
-    setTransitioningId(module.id);
     telegram.haptic('medium');
-
     const nextLesson = module.lessons.find(l => !userProgress.completedLessonIds.includes(l.id)) || module.lessons[0];
-    
-    // Delay navigation to show animation
-    if (nextLesson) {
-        setTimeout(() => {
-            onSelectLesson(nextLesson);
-        }, 500);
-    }
+    if (nextLesson) onSelectLesson(nextLesson);
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
         {modules.map((module, index) => {
             const isLocked = userProgress.level < module.minLevel;
             const completedCount = module.lessons.filter(l => userProgress.completedLessonIds.includes(l.id)).length;
             const totalCount = module.lessons.length;
             const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
             
-            const cat = getCategoryConfig(module.category);
-            
-            const isSelected = transitioningId === module.id;
-            const isOthers = transitioningId !== null && transitioningId !== module.id;
+            // Dynamic Gradients based on Category
+            const gradient = module.category === 'SALES' ? 'from-emerald-600/90 to-emerald-900/90' :
+                             module.category === 'PSYCHOLOGY' ? 'from-purple-600/90 to-purple-900/90' :
+                             module.category === 'TACTICS' ? 'from-red-600/90 to-red-900/90' :
+                             'from-slate-700/90 to-slate-900/90';
 
             return (
                 <div 
                     key={module.id}
-                    onClick={() => !transitioningId && handleModuleClick(module, isLocked)}
+                    onClick={() => handleModuleClick(module, isLocked)}
                     className={`
-                        relative w-full rounded-[1.5rem] p-5 transition-all duration-500 ease-out group
-                        flex items-center gap-4 cursor-pointer overflow-hidden border
+                        relative w-full rounded-[2.5rem] p-1 overflow-hidden transition-all duration-300 group
                         ${shakingId === module.id ? 'animate-shake' : ''}
-                        
-                        ${/* Base Styles */ ''}
-                        ${isLocked 
-                            ? 'opacity-50 grayscale bg-surface/50 border-border-color' 
-                            : 'bg-surface border-border-color shadow-sm'}
-                        
-                        ${/* Hover Effects (Only if not transitioning) */ ''}
-                        ${!isLocked && !transitioningId ? 'hover:scale-[1.01] active:scale-[0.98] hover:shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:border-[#D4AF37]/50' : ''}
-                        
-                        ${/* Active Selection Animation */ ''}
-                        ${isSelected ? '!scale-105 !border-[#6C5DD3] !shadow-[0_0_50px_rgba(108,93,211,0.5)] z-20 ring-1 ring-[#6C5DD3]/50' : ''}
-                        
-                        ${/* Fade out others */ ''}
-                        ${isOthers ? 'opacity-30 scale-95 blur-[2px] grayscale' : ''}
+                        ${isLocked ? 'opacity-70 grayscale cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-xl'}
                     `}
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                >   
-                    {/* Icon Container */}
-                    <div className={`
-                        w-14 h-14 rounded-2xl flex-shrink-0 flex items-center justify-center text-2xl relative overflow-hidden border border-border-color transition-colors duration-500
-                        ${isSelected ? 'bg-[#6C5DD3] text-white border-transparent' : 'bg-body'}
-                    `}>
-                        <div className={`absolute inset-0 opacity-10 transition-opacity ${isSelected ? 'opacity-0' : 'opacity-10'}`} style={{ backgroundColor: cat.color }}></div>
-                        <span className="relative z-10">{isLocked ? '🔒' : cat.icon}</span>
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                             <span className={`text-[8px] font-black uppercase tracking-widest transition-colors ${isSelected ? 'text-[#6C5DD3]' : 'text-text-secondary'}`}>
-                                 Модуль {index + 1} • {module.lessons.length} уроков
-                             </span>
-                             {isLocked && <span className="text-[8px] font-black bg-body px-1.5 py-0.5 rounded text-text-secondary border border-border-color">Lvl {module.minLevel}</span>}
-                        </div>
-                        <h3 className={`text-sm font-black leading-tight truncate pr-4 transition-colors ${isSelected ? 'text-[#6C5DD3]' : 'text-text-primary'}`}>
-                            {module.title}
-                        </h3>
+                >
+                    {/* Glassy Border Container */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-[2.5rem] pointer-events-none z-20"></div>
+                    
+                    {/* Main Card Content */}
+                    <div className={`relative h-48 rounded-[2.3rem] overflow-hidden flex flex-col justify-end p-6 ${isLocked ? 'bg-[#14161B]' : 'bg-[#14161B]'}`}>
                         
-                        {/* Progress Bar */}
-                        {!isLocked && (
-                          <div className="mt-2 flex items-center gap-2">
-                              <div className="h-1 flex-1 bg-body rounded-full overflow-hidden">
-                                  <div 
-                                      className="h-full rounded-full transition-all duration-700" 
-                                      style={{ width: `${progressPercent}%`, backgroundColor: isSelected ? '#6C5DD3' : cat.color }}
-                                  ></div>
-                              </div>
-                              <span className="text-[8px] font-black text-text-secondary">{progressPercent}%</span>
-                          </div>
-                        )}
-                    </div>
+                        {/* Background Image/Gradient */}
+                        <div className={`absolute inset-0 bg-gradient-to-t ${gradient} z-0`}></div>
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20 z-0 mix-blend-overlay"></div>
+                        
+                        {/* Status Badge */}
+                        <div className="absolute top-5 right-5 z-10">
+                            {isLocked ? (
+                                <div className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10">
+                                    🔒
+                                </div>
+                            ) : (
+                                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/20 text-white font-black text-xs">
+                                    {progressPercent}%
+                                </div>
+                            )}
+                        </div>
 
-                    {/* Simple Chevron */}
-                    <div className={`transition-all duration-300 ${isSelected ? 'translate-x-1 text-[#6C5DD3]' : 'text-text-secondary/30 group-hover:text-text-primary'}`}>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                        </svg>
+                        {/* Text Content */}
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="px-2 py-0.5 rounded-md bg-black/30 backdrop-blur-md text-[8px] font-black uppercase tracking-widest text-white/80 border border-white/10">
+                                    Модуль {index + 1}
+                                </span>
+                                {isLocked && <span className="px-2 py-0.5 rounded-md bg-red-500/80 text-[8px] font-black uppercase tracking-widest text-white">Lvl {module.minLevel}</span>}
+                            </div>
+                            
+                            <h3 className="text-2xl font-black text-white leading-tight mb-2 drop-shadow-lg max-w-[80%]">
+                                {module.title}
+                            </h3>
+                            
+                            {/* Progress Line */}
+                            {!isLocked && (
+                                <div className="w-full h-1.5 bg-black/30 rounded-full overflow-hidden mt-2 backdrop-blur-sm">
+                                    <div 
+                                        className="h-full bg-white shadow-[0_0_10px_white] transition-all duration-1000 ease-out" 
+                                        style={{ width: `${progressPercent}%` }}
+                                    ></div>
+                                </div>
+                            )}
+                            
+                            <div className="mt-3 flex items-center justify-between text-white/60 text-[10px] font-bold uppercase tracking-wider">
+                                <span>{module.lessons.length} Уроков</span>
+                                <span>{completedCount} Пройдено</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             );

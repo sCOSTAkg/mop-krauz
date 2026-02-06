@@ -132,7 +132,6 @@ export const checkHomeworkWithAI = async (
       const parts: any[] = [];
       
       if (type === 'PHOTO' || type === 'VIDEO' || type === 'FILE') {
-         // Assuming content is base64 string without data prefix for API, or handle it here
          const base64Clean = content.includes('base64,') ? content.split('base64,')[1] : content;
          
          let mimeType = 'image/jpeg';
@@ -202,15 +201,52 @@ export const checkHomeworkWithAI = async (
     } catch (error) {
       console.error('Homework Grading Error:', error);
       return {
-          passed: true, // Fallback to pass if AI fails to prevent blocking user, but log it.
+          passed: true,
           feedback: 'Штаб перегружен. Задание принято условно. (Ошибка AI)'
       };
     }
   };
 
+export const verifyStoryScreenshot = async (base64Image: string): Promise<boolean> => {
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const cleanBase64 = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
+
+        const prompt = `
+        Look at this screenshot. Does it look like a social media Story (Instagram, Telegram, VK, WhatsApp)?
+        And does it contain any mention of "Spartan", "Sales", "Training", "Course" or just look like a repost of app content?
+        
+        Return JSON: { "isStory": boolean }
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: {
+                parts: [
+                    { inlineData: { data: cleanBase64, mimeType: 'image/jpeg' } },
+                    { text: prompt }
+                ]
+            },
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: { isStory: { type: Type.BOOLEAN } },
+                    required: ["isStory"]
+                }
+            }
+        });
+
+        const result = JSON.parse(response.text || '{}');
+        return !!result.isStory;
+    } catch (e) {
+        console.error('Story Verify Error', e);
+        return false; // Fail safe
+    }
+};
+
 // --- AVATAR GENERATION LOGIC ---
 
-// Rich descriptions mapping
 const ARMOR_DESCRIPTIONS: Record<string, string> = {
     'Classic Bronze': 'Traditional Spartan bronze cuirass with defined muscle sculpting, deep red cape draped over shoulders, leather straps, and Corinthian helmet details on the pauldrons. Battle-worn texture with scratches.',
     'Midnight Stealth': 'Sleek, matte black obsidian tactical armor, dark grey cowl/hood casting shadows over the forehead, faint purple energy accents in armor crevices, lightweight stealth aesthetic.',

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Tab, UserRole } from '../types';
 
 interface SmartNavProps {
@@ -22,6 +22,9 @@ export const SmartNav: React.FC<SmartNavProps> = ({
   onExitLesson
 }) => {
   
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
+
   const adminLinks = [
     { id: 'OVERVIEW', icon: '📊', label: 'Штаб' },
     { id: 'NEURAL_CORE', icon: '🧠', label: 'ИИ Ядро' },
@@ -37,6 +40,33 @@ export const SmartNav: React.FC<SmartNavProps> = ({
   ];
 
   const isAdminView = activeTab === Tab.ADMIN_DASHBOARD;
+
+  // Tabs ordered for swipe logic
+  const TABS_ORDER = [Tab.HOME, Tab.PROFILE];
+  if (role === 'CURATOR') TABS_ORDER.push(Tab.CURATOR_DASHBOARD);
+  if (role === 'ADMIN') TABS_ORDER.push(Tab.ADMIN_DASHBOARD);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+      touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      touchEndX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+      if (touchStartX.current - touchEndX.current > 50) {
+          // Swipe Left -> Next Tab
+          const currIdx = TABS_ORDER.indexOf(activeTab);
+          if (currIdx < TABS_ORDER.length - 1) setActiveTab(TABS_ORDER[currIdx + 1]);
+      }
+
+      if (touchEndX.current - touchStartX.current > 50) {
+          // Swipe Right -> Prev Tab
+          const currIdx = TABS_ORDER.indexOf(activeTab);
+          if (currIdx > 0) setActiveTab(TABS_ORDER[currIdx - 1]);
+      }
+  };
 
   // MODE: Lesson Active
   if (isLessonActive) {
@@ -73,6 +103,9 @@ export const SmartNav: React.FC<SmartNavProps> = ({
           pointer-events-auto dynamic-island glass-panel bg-white/95 dark:bg-[#14161B]/95 backdrop-blur-xl rounded-[2.5rem] flex flex-col items-center transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] shadow-2xl dark:shadow-black/50 border border-slate-200 dark:border-white/10
           ${isAdminView ? 'w-full max-w-[420px] p-2' : 'w-auto px-6 h-20'}
         `}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {/* MODE: Admin Sub-Navigation */}
         {isAdminView && (
@@ -99,8 +132,6 @@ export const SmartNav: React.FC<SmartNavProps> = ({
               icon={<svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5.69l5 4.5V18h-2v-6H9v6H7v-7.81l5-4.5M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"/></svg>}
             />
             
-            {/* Chat removed here */}
-
             <NavButton 
               tab={Tab.PROFILE} 
               isActive={activeTab === Tab.PROFILE}

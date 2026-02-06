@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { UserProgress, CalendarEvent, UserRole } from '../types';
+import { UserProgress, CalendarEvent, UserRole, AppConfig } from '../types';
 import { CalendarView } from './CalendarView';
 import { telegram } from '../services/telegramService';
 import { XPService, XP_RULES } from '../services/xpService';
+import { Storage } from '../services/storage';
+import { verifyStoryScreenshot } from '../services/geminiService';
 
 interface ProfileProps {
   userProgress: UserProgress;
@@ -15,20 +17,6 @@ interface ProfileProps {
 }
 
 type ProfileTab = 'STATS' | 'CALENDAR' | 'RATING' | 'SETTINGS';
-
-const ARMOR_OPTIONS = [
-    { value: 'Classic Bronze', label: 'Classic Bronze (Классика)' },
-    { value: 'Midnight Stealth', label: 'Midnight Stealth (Стелс)' },
-    { value: 'Golden God', label: 'Golden God (Божественный)' },
-    { value: 'Futuristic Chrome', label: 'Futuristic Chrome (Кибер)' },
-];
-
-const BACKGROUND_OPTIONS = [
-    { value: 'Ancient Battlefield', label: 'Ancient Battlefield (Поле боя)' },
-    { value: 'Temple of Olympus', label: 'Temple of Olympus (Олимп)' },
-    { value: 'Stormy Peak', label: 'Stormy Peak (Шторм)' },
-    { value: 'Volcanic Gates', label: 'Volcanic Gates (Вулкан)' },
-];
 
 export const Profile: React.FC<ProfileProps> = ({ userProgress, onLogout, allUsers, onUpdateUser, events, activeTabOverride }) => {
   const [activeTab, setActiveTab] = useState<ProfileTab>((activeTabOverride as ProfileTab) || 'STATS');
@@ -43,14 +31,16 @@ export const Profile: React.FC<ProfileProps> = ({ userProgress, onLogout, allUse
   const [editInstagram, setEditInstagram] = useState(userProgress.instagram || '');
   const [editAbout, setEditAbout] = useState(userProgress.aboutMe || '');
   const [editNotifications, setEditNotifications] = useState(userProgress.notifications);
-  // Visual Settings State
-  const [editArmor, setEditArmor] = useState(userProgress.armorStyle || 'Classic Bronze');
-  const [editBackground, setEditBackground] = useState(userProgress.backgroundStyle || 'Ancient Battlefield');
 
   const [isSaving, setIsSaving] = useState(false);
+  const [storyFile, setStoryFile] = useState<string | null>(null);
+  const storyInputRef = useRef<HTMLInputElement>(null);
+  const [verifyingStory, setVerifyingStory] = useState(false);
 
-  // Invite Link
-  const inviteLink = userProgress.inviteLink || `https://t.me/SalesProBot?start=ref_${userProgress.telegramUsername || 'unknown'}`;
+  // Config for invite link
+  const appConfig = Storage.get<AppConfig>('appConfig', {} as any);
+  const inviteBase = appConfig?.integrations?.inviteBaseUrl || 'https://t.me/SalesProBot?start=ref_';
+  const inviteLink = `${inviteBase}${userProgress.telegramUsername || 'unknown'}`;
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!avatarRef.current) return;
@@ -78,9 +68,7 @@ export const Profile: React.FC<ProfileProps> = ({ userProgress, onLogout, allUse
             telegramUsername: editTelegram,
             instagram: editInstagram,
             aboutMe: editAbout,
-            notifications: editNotifications,
-            armorStyle: editArmor,
-            backgroundStyle: editBackground
+            notifications: editNotifications
         });
         telegram.haptic('success');
         setIsSaving(false);
@@ -96,27 +84,41 @@ export const Profile: React.FC<ProfileProps> = ({ userProgress, onLogout, allUse
   const copyInviteLink = () => {
       navigator.clipboard.writeText(inviteLink);
       telegram.haptic('selection');
-      telegram.showAlert('Ссылка скопирована! Отправь другу.', 'Успех');
+      telegram.showAlert(`Ссылка скопирована: ${inviteLink}`, 'Успех');
   };
 
-  const toggleNotification = (key: keyof typeof editNotifications) => {
-    setEditNotifications(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  const handleStoryFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-  const handleShareStory = () => {
-      // Simulate share action
+      setVerifyingStory(true);
       telegram.haptic('medium');
-      // In a real TWA, we might use WebApp.openTelegramLink to share a story
       
-      setTimeout(() => {
-          const result = XPService.shareStory(userProgress);
-          if (result.allowed) {
-              onUpdateUser(result.user);
-              telegram.showAlert(`Репост засчитан! +${result.xp} XP`, 'Успех');
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+          const base64 = reader.result as string;
+          const isValid = await verifyStoryScreenshot(base64);
+          
+          if (isValid) {
+              const result = XPService.shareStory(userProgress);
+              if (result.allowed) {
+                  onUpdateUser(result.user);
+                  telegram.showAlert(`Скриншот принят! Начислено +${result.xp} XP`, 'Успех');
+                  telegram.haptic('success');
+              } else {
+                  telegram.showAlert(result.message || 'Лимит', 'Внимание');
+              }
           } else {
-              telegram.showAlert(result.message || 'Лимит', 'Внимание');
+              telegram.showAlert('ИИ не распознал сторис или упоминание курса. Попробуйте четкий скриншот.', 'Ошибка');
+              telegram.haptic('error');
           }
-      }, 500);
+          setVerifyingStory(false);
+      };
+      reader.readAsDataURL(file);
+  };
+
+  const handleShareStoryClick = () => {
+      storyInputRef.current?.click();
   };
 
   // --- SUB-COMPONENTS ---
@@ -169,131 +171,99 @@ export const Profile: React.FC<ProfileProps> = ({ userProgress, onLogout, allUse
   );
 
   const renderLeaderboard = () => {
-      // Merge current user with allUsers if not present (Mock Data included for visual check)
-      const mockUsers: UserProgress[] = [
-          { name: 'Leonidas', xp: 15000, level: 10, role: 'ADMIN', isAuthenticated: true, completedLessonIds: [], submittedHomeworks: [], chatHistory: [], notifications: {}, notebook: [], theme: 'DARK', stats: XPService.getInitStats() } as UserProgress,
-          { name: 'Artemis', xp: 12500, level: 8, role: 'STUDENT', isAuthenticated: true, completedLessonIds: [], submittedHomeworks: [], chatHistory: [], notifications: {}, notebook: [], theme: 'DARK', stats: XPService.getInitStats() } as UserProgress,
-      ];
-      
-      const combinedUsers = [...mockUsers, ...allUsers];
+      // Merge current user with allUsers if not present
+      const combinedUsers = [...allUsers];
       if (!combinedUsers.find(u => u.name === userProgress.name)) {
           combinedUsers.push(userProgress);
       }
-      
+      // Sort desc
       const sortedUsers = combinedUsers.sort((a, b) => b.xp - a.xp);
+      const top3 = sortedUsers.slice(0, 3);
+      const rest = sortedUsers.slice(3);
 
       return (
           <div className="space-y-6">
-              {/* Rules Card */}
-              <div className="bg-[#14161B] p-6 rounded-[2rem] border border-white/5 relative overflow-hidden animate-slide-up">
-                  <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 bg-[#FFD700]/10 rounded-full flex items-center justify-center text-xl">📜</div>
-                      <h3 className="text-lg font-black text-white uppercase">Правила Рейтинга</h3>
-                  </div>
-                  <div className="space-y-2 text-xs text-white/70 font-medium">
-                      <div className="flex justify-between border-b border-white/5 pb-2">
-                          <span>📝 Блокнот (Привычка/ДЗ)</span>
-                          <span className="text-[#6C5DD3] font-bold">+{XP_RULES.NOTEBOOK_HABIT} XP</span>
-                      </div>
-                      <div className="flex justify-between border-b border-white/5 pb-2">
-                          <span>🎯 Цели / Благодарности</span>
-                          <span className="text-[#6C5DD3] font-bold">+{XP_RULES.NOTEBOOK_GOAL} XP</span>
-                      </div>
-                      <div className="flex justify-between border-b border-white/5 pb-2">
-                          <span>⚡ ДЗ (Скорость/Качество)</span>
-                          <span className="text-[#6C5DD3] font-bold">{XP_RULES.HOMEWORK_SLOW}-{XP_RULES.HOMEWORK_FAST} XP</span>
-                      </div>
-                      <div className="flex justify-between border-b border-white/5 pb-2">
-                          <span>🎥 Прямой эфир</span>
-                          <span className="text-[#6C5DD3] font-bold">+{XP_RULES.STREAM_ATTENDANCE} XP</span>
-                      </div>
-                      <div className="flex justify-between border-b border-white/5 pb-2">
-                          <span>🙋‍♂️ Вопрос (max 5)</span>
-                          <span className="text-[#6C5DD3] font-bold">+{XP_RULES.QUESTION_ASKED} XP</span>
-                      </div>
-                      <div className="flex justify-between border-b border-white/5 pb-2">
-                          <span>💡 Инициатива</span>
-                          <span className="text-[#6C5DD3] font-bold">+{XP_RULES.INITIATIVE_PROPOSAL} XP</span>
-                      </div>
-                      <div className="flex justify-between border-b border-white/5 pb-2">
-                          <span>📸 Репост Stories</span>
-                          <span className="text-[#6C5DD3] font-bold">+{XP_RULES.STORY_REPOST} XP</span>
-                      </div>
-                      <div className="flex justify-between pt-1">
-                          <span className="text-[#FFD700]">🤝 Приведи друга</span>
-                          <span className="text-[#FFD700] font-black">+{XP_RULES.REFERRAL_FRIEND.toLocaleString()} XP</span>
-                      </div>
+              {/* Top 3 Display */}
+              <div className="bg-gradient-to-b from-[#6C5DD3]/20 to-transparent p-6 rounded-[2.5rem] relative overflow-hidden animate-slide-up border border-[#6C5DD3]/10">
+                  <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+                  
+                  <div className="flex justify-center items-end gap-4 relative z-10 mb-4">
+                      {/* 2nd */}
+                      {top3[1] && (
+                          <div className="flex flex-col items-center">
+                              <div className="w-16 h-16 rounded-full border-2 border-slate-300 relative shadow-lg">
+                                  <img src={top3[1].avatarUrl || `https://ui-avatars.com/api/?name=${top3[1].name}`} className="w-full h-full rounded-full object-cover grayscale-[0.3]" />
+                                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-400 text-white text-[10px] font-black px-2 rounded-full">#2</div>
+                              </div>
+                              <span className="text-xs font-bold mt-2 text-white">{top3[1].name}</span>
+                              <span className="text-[9px] font-black text-white/50">{top3[1].xp} XP</span>
+                          </div>
+                      )}
+                      
+                      {/* 1st */}
+                      {top3[0] && (
+                          <div className="flex flex-col items-center -translate-y-4">
+                              <div className="w-24 h-24 rounded-full border-4 border-[#FFD700] relative shadow-[0_0_30px_rgba(255,215,0,0.4)]">
+                                  <img src={top3[0].avatarUrl || `https://ui-avatars.com/api/?name=${top3[0].name}`} className="w-full h-full rounded-full object-cover" />
+                                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-4xl animate-bounce">👑</div>
+                                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#FFD700] text-black text-xs font-black px-3 py-0.5 rounded-full border border-white">#1</div>
+                              </div>
+                              <span className="text-sm font-black mt-3 text-[#FFD700] uppercase tracking-wider">{top3[0].name}</span>
+                              <span className="text-[10px] font-black text-white/70">{top3[0].xp} XP</span>
+                          </div>
+                      )}
+
+                      {/* 3rd */}
+                      {top3[2] && (
+                          <div className="flex flex-col items-center">
+                              <div className="w-16 h-16 rounded-full border-2 border-[#CD7F32] relative shadow-lg">
+                                  <img src={top3[2].avatarUrl || `https://ui-avatars.com/api/?name=${top3[2].name}`} className="w-full h-full rounded-full object-cover grayscale-[0.3]" />
+                                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#CD7F32] text-white text-[10px] font-black px-2 rounded-full">#3</div>
+                              </div>
+                              <span className="text-xs font-bold mt-2 text-white">{top3[2].name}</span>
+                              <span className="text-[9px] font-black text-white/50">{top3[2].xp} XP</span>
+                          </div>
+                      )}
                   </div>
               </div>
 
-              {/* Actions */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Actions Card */}
+              <div className="bg-[#14161B] p-5 rounded-[2rem] border border-white/5 grid grid-cols-2 gap-4">
+                  <div className="col-span-2 text-center mb-2">
+                      <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Бонусные Действия</span>
+                  </div>
                   <button 
-                    onClick={handleShareStory}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 text-white p-4 rounded-[2rem] shadow-lg active:scale-95 transition-transform flex flex-col items-center justify-center relative overflow-hidden group"
+                    onClick={handleShareStoryClick}
+                    disabled={verifyingStory}
+                    className="bg-gradient-to-br from-purple-600 to-blue-600 text-white p-4 rounded-2xl shadow-lg active:scale-95 transition-transform relative overflow-hidden group"
                   >
+                      <input type="file" ref={storyInputRef} onChange={handleStoryFileChange} accept="image/*" className="hidden" />
                       <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <span className="text-2xl mb-1">📸</span>
-                      <span className="text-[9px] font-black uppercase tracking-widest">Share Story</span>
-                      <span className="text-[8px] opacity-70">+{XP_RULES.STORY_REPOST} XP</span>
+                      <div className="flex flex-col items-center">
+                          {verifyingStory ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mb-1"></div> : <span className="text-2xl mb-1">📸</span>}
+                          <span className="text-[9px] font-black uppercase tracking-widest">{verifyingStory ? 'Проверка...' : 'Share Story'}</span>
+                          <span className="text-[8px] opacity-70">+{XP_RULES.STORY_REPOST} XP</span>
+                      </div>
                   </button>
                   <button 
                     onClick={copyInviteLink}
-                    className="bg-gradient-to-r from-[#FFD700] to-orange-500 text-black p-4 rounded-[2rem] shadow-lg active:scale-95 transition-transform flex flex-col items-center justify-center relative overflow-hidden group"
+                    className="bg-gradient-to-br from-[#FFD700] to-orange-500 text-black p-4 rounded-2xl shadow-lg active:scale-95 transition-transform relative overflow-hidden group"
                   >
                       <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <span className="text-2xl mb-1">🤝</span>
-                      <span className="text-[9px] font-black uppercase tracking-widest">Invite Friend</span>
-                      <span className="text-[8px] opacity-70">+{XP_RULES.REFERRAL_FRIEND.toLocaleString()} XP</span>
+                      <div className="flex flex-col items-center">
+                          <span className="text-2xl mb-1">🤝</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest">Invite Friend</span>
+                          <span className="text-[8px] opacity-70">+{XP_RULES.REFERRAL_FRIEND.toLocaleString()} XP</span>
+                      </div>
                   </button>
-              </div>
-
-              {/* Top 3 */}
-              <div className="bg-gradient-to-br from-white to-slate-50 dark:from-[#1F2128] dark:to-[#14161B] text-slate-900 dark:text-white p-6 rounded-[2rem] mb-6 relative overflow-hidden animate-slide-up fill-mode-both border border-slate-200 dark:border-white/5 shadow-xl dark:shadow-2xl">
-                  <div className="absolute top-0 right-0 text-[100px] opacity-5 rotate-12 -translate-y-4 pointer-events-none">🏆</div>
-                  <h3 className="text-2xl font-black mb-1">Топ Бойцов</h3>
-                  <p className="text-slate-400 dark:text-white/40 text-xs font-bold uppercase tracking-widest mb-6">Рейтинг отряда</p>
-                  
-                  <div className="flex items-end justify-center gap-4 mb-4">
-                      {/* 2nd Place */}
-                      <div className="flex flex-col items-center transform transition-transform hover:-translate-y-1 duration-300">
-                          <div className="w-12 h-12 rounded-full border border-slate-300 dark:border-white/20 p-0.5 mb-2 relative">
-                              <img src={`https://ui-avatars.com/api/?name=${sortedUsers[1]?.name || 'Bot'}`} className="w-full h-full rounded-full object-cover grayscale opacity-70" />
-                              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#C0C0C0] text-[#1F2128] text-[9px] font-black px-1.5 rounded-full shadow-sm">2</div>
-                          </div>
-                          <span className="text-[10px] font-bold text-slate-600 dark:text-white/70">{sortedUsers[1]?.name || 'Empty'}</span>
-                          <span className="text-[9px] text-slate-400 dark:text-white/30">{sortedUsers[1]?.xp || 0} XP</span>
-                      </div>
-                      
-                      {/* 1st Place */}
-                      <div className="flex flex-col items-center -translate-y-4 transform transition-transform hover:-translate-y-5 duration-300">
-                          <div className="w-16 h-16 rounded-full border-2 border-[#FFD700] p-0.5 mb-2 relative shadow-[0_0_30px_rgba(255,215,0,0.3)]">
-                              <img src={`https://ui-avatars.com/api/?name=${sortedUsers[0]?.name || 'Bot'}`} className="w-full h-full rounded-full object-cover" />
-                              <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#FFD700] text-[#1F2128] text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg">1</div>
-                              <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-2xl animate-bounce">👑</div>
-                          </div>
-                          <span className="text-xs font-bold text-[#FFD700]">{sortedUsers[0]?.name || 'Empty'}</span>
-                          <span className="text-[9px] text-slate-500 dark:text-white/50">{sortedUsers[0]?.xp || 0} XP</span>
-                      </div>
-
-                      {/* 3rd Place */}
-                      <div className="flex flex-col items-center transform transition-transform hover:-translate-y-1 duration-300">
-                          <div className="w-12 h-12 rounded-full border border-slate-300 dark:border-white/20 p-0.5 mb-2 relative">
-                              <img src={`https://ui-avatars.com/api/?name=${sortedUsers[2]?.name || 'Bot'}`} className="w-full h-full rounded-full object-cover grayscale opacity-70" />
-                              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-[#CD7F32] text-[#1F2128] text-[9px] font-black px-1.5 rounded-full shadow-sm">3</div>
-                          </div>
-                          <span className="text-[10px] font-bold text-slate-600 dark:text-white/70">{sortedUsers[2]?.name || 'Empty'}</span>
-                          <span className="text-[9px] text-slate-400 dark:text-white/30">{sortedUsers[2]?.xp || 0} XP</span>
-                      </div>
-                  </div>
               </div>
 
               {/* Rest of the list */}
               <div className="bg-white dark:bg-[#14161B] rounded-[2rem] border border-slate-200 dark:border-white/5 overflow-hidden animate-slide-up delay-100 fill-mode-both shadow-md dark:shadow-none">
-                  {sortedUsers.slice(3).map((u, i) => (
+                  {rest.map((u, i) => (
                       <div key={i} className={`p-4 flex items-center justify-between border-b border-slate-100 dark:border-white/5 last:border-0 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors ${u.name === userProgress.name ? 'bg-[#6C5DD3]/10 hover:bg-[#6C5DD3]/20' : ''}`}>
                           <div className="flex items-center gap-4">
-                              <span className="text-slate-400 dark:text-white/30 font-black text-sm w-4">{i + 4}</span>
+                              <span className="text-slate-400 dark:text-white/30 font-black text-sm w-6 text-center">{i + 4}</span>
                               <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/5 overflow-hidden">
                                   <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-full h-full object-cover" />
                               </div>
@@ -335,44 +305,6 @@ export const Profile: React.FC<ProfileProps> = ({ userProgress, onLogout, allUse
                           {userProgress.theme === 'DARK' ? 'D' : 'L'}
                       </div>
                   </button>
-              </div>
-          </div>
-
-          {/* Visual Style (New) */}
-          <div className="bg-white dark:bg-[#14161B] p-6 rounded-[2.5rem] border border-slate-200 dark:border-white/5 animate-slide-up fill-mode-both shadow-md dark:shadow-none">
-              <h3 className="font-black text-slate-800 dark:text-white mb-2 text-lg">Визуальный стиль</h3>
-              <p className="text-slate-400 text-xs mb-6">Настройки для генерации аватара</p>
-
-              <div className="space-y-4">
-                  <div className="relative group">
-                      <label className="text-[10px] font-black uppercase text-slate-400 dark:text-white/30 pl-2 mb-1 block">Стиль Брони</label>
-                      <div className="relative">
-                           <select 
-                                value={editArmor}
-                                onChange={(e) => setEditArmor(e.target.value)}
-                                className="w-full appearance-none bg-slate-50 dark:bg-white/5 p-4 pl-12 rounded-2xl font-bold text-slate-800 dark:text-white outline-none border border-transparent focus:border-[#6C5DD3] transition-all focus:bg-white dark:focus:bg-black"
-                           >
-                                {ARMOR_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                           </select>
-                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg opacity-30 grayscale group-focus-within:grayscale-0 transition-all">🛡️</span>
-                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">▼</span>
-                      </div>
-                  </div>
-
-                  <div className="relative group">
-                      <label className="text-[10px] font-black uppercase text-slate-400 dark:text-white/30 pl-2 mb-1 block">Фоновое окружение</label>
-                      <div className="relative">
-                           <select 
-                                value={editBackground}
-                                onChange={(e) => setEditBackground(e.target.value)}
-                                className="w-full appearance-none bg-slate-50 dark:bg-white/5 p-4 pl-12 rounded-2xl font-bold text-slate-800 dark:text-white outline-none border border-transparent focus:border-[#6C5DD3] transition-all focus:bg-white dark:focus:bg-black"
-                           >
-                                {BACKGROUND_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                           </select>
-                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg opacity-30 grayscale group-focus-within:grayscale-0 transition-all">🌄</span>
-                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">▼</span>
-                      </div>
-                  </div>
               </div>
           </div>
 

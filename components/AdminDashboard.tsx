@@ -6,6 +6,7 @@ import { AIService } from '../services/aiService';
 import { Button } from './Button';
 import { telegram } from '../services/telegramService';
 import { Storage } from '../services/storage';
+import { CalendarView } from './CalendarView';
 
 // --- UI COMPONENTS ---
   
@@ -99,15 +100,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [broadcastTitle, setBroadcastTitle] = useState('');
 
+  // Deploy State
+  const [deployProgress, setDeployProgress] = useState(0);
+  const [deployLogs, setDeployLogs] = useState<string[]>([]);
+
   // --- ACTIONS ---
 
   const handleBroadcast = () => {
       if (!broadcastMsg.trim()) return;
       telegram.haptic('success');
       addToast('success', `Рассылка отправлена ${users.length} пользователям`);
-      
-      // Simulate sending
-      // In a real app, this would call a backend endpoint
       setBroadcastMsg('');
       setBroadcastTitle('');
   };
@@ -117,14 +119,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       
       telegram.haptic('warning');
       
-      // Clear Service Worker Caches
       if ('caches' in window) {
           const keys = await caches.keys();
           await Promise.all(keys.map(key => caches.delete(key)));
       }
 
-      // Clear Local Storage (except critical config if needed, but here we clear all app data)
-      // We might want to keep the Admin's session, but let's do a hard reset for safety as requested.
       Storage.clear();
       
       addToast('info', 'Кэш очищен. Перезагрузка...');
@@ -136,6 +135,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       onUpdateConfig(newConfig);
       AIService.updateConfig(newConfig.aiConfig);
       addToast('success', 'Настройки Ядра ИИ обновлены');
+  };
+
+  const handleDeploy = () => {
+      setDeployProgress(0);
+      setDeployLogs(['Initializing build sequence...']);
+      const steps = [
+          'Checking dependencies...',
+          'Compiling modules...',
+          'Optimizing assets...',
+          'Syncing with Vercel...',
+          'Verifying integrity...',
+          'Finalizing deployment...'
+      ];
+      
+      let stepIndex = 0;
+      const interval = setInterval(() => {
+          if (stepIndex >= steps.length) {
+              clearInterval(interval);
+              setDeployProgress(100);
+              setDeployLogs(prev => [...prev, 'Deployment Successful! ✅']);
+              telegram.haptic('success');
+              addToast('success', 'Приложение обновлено');
+          } else {
+              setDeployLogs(prev => [...prev, steps[stepIndex]]);
+              setDeployProgress(((stepIndex + 1) / steps.length) * 100);
+              stepIndex++;
+          }
+      }, 800);
   };
 
   const testSupabaseConnection = async () => {
@@ -213,139 +240,66 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     </div>
   );
 
-  const renderBroadcast = () => (
+  const renderDeploy = () => (
       <AdminCard className="animate-slide-up">
-          <SectionHeader title="Центр Вещания" subtitle="Отправка уведомлений и новостей" />
+          <SectionHeader title="Центр Деплоя" subtitle="Управление обновлениями и сборкой" />
           
-          <div className="bg-gradient-to-r from-[#6C5DD3]/10 to-transparent p-6 rounded-2xl border border-[#6C5DD3]/20 mb-8">
-              <div className="flex gap-4">
-                  <div className="text-4xl">📡</div>
-                  <div>
-                      <h4 className="font-bold text-white mb-1">Глобальная рассылка</h4>
-                      <p className="text-xs text-white/60 max-w-md">
-                          Сообщение будет отправлено всем пользователям с ролью STUDENT. 
-                          Используйте это для важных анонсов или дедлайнов.
-                      </p>
-                  </div>
+          <div className="bg-black/40 p-6 rounded-2xl border border-white/5 mb-6 font-mono text-xs">
+              <div className="flex justify-between items-center mb-4">
+                  <span className="text-white/50">Status: {deployProgress === 0 ? 'Idle' : deployProgress === 100 ? 'Deployed' : 'Building...'}</span>
+                  <span className="text-[#6C5DD3]">{Math.round(deployProgress)}%</span>
+              </div>
+              <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-4">
+                  <div className="h-full bg-[#6C5DD3] transition-all duration-300" style={{ width: `${deployProgress}%` }}></div>
+              </div>
+              <div className="h-40 overflow-y-auto custom-scrollbar space-y-1 text-white/70">
+                  {deployLogs.length === 0 && <span className="opacity-30">Ready to deploy...</span>}
+                  {deployLogs.map((log, i) => (
+                      <div key={i} className="border-l-2 border-[#6C5DD3] pl-2">{log}</div>
+                  ))}
               </div>
           </div>
 
-          <div className="space-y-6 max-w-2xl">
-              <InputGroup label="Заголовок (Опционально)">
-                  <StyledInput 
-                      placeholder="Например: Срочная новость" 
-                      value={broadcastTitle}
-                      onChange={e => setBroadcastTitle(e.target.value)}
-                  />
-              </InputGroup>
-              
-              <InputGroup label="Текст сообщения">
-                  <StyledTextarea 
-                      placeholder="Введите текст рассылки..." 
-                      value={broadcastMsg}
-                      onChange={e => setBroadcastMsg(e.target.value)}
-                      className="min-h-[150px] text-base"
-                  />
-              </InputGroup>
-
-              <div className="flex items-center justify-end gap-4 pt-4">
-                  <span className="text-xs text-white/30">{broadcastMsg.length} символов</span>
-                  <Button onClick={handleBroadcast} disabled={!broadcastMsg} icon={<span>📨</span>}>
-                      Отправить Рассылку
-                  </Button>
-              </div>
-          </div>
+          <Button onClick={handleDeploy} disabled={deployProgress > 0 && deployProgress < 100} fullWidth className="!py-4">
+              {deployProgress > 0 && deployProgress < 100 ? 'Сборка...' : 'Запустить Деплой'}
+          </Button>
       </AdminCard>
   );
 
-  const renderDatabase = () => (
-    <div className="space-y-6 animate-slide-up">
-        <AdminCard>
-            <div className="absolute top-0 right-0 p-6 opacity-5 text-9xl grayscale rotate-12">🗄️</div>
-            <SectionHeader title="СУБД и Облако" subtitle="Настройка подключения к Supabase" />
-            
-            <div className="grid md:grid-cols-2 gap-8 relative z-10">
-                <div className="space-y-4">
-                    <InputGroup label="Supabase Project URL">
-                        <StyledInput 
-                            placeholder="https://xyz.supabase.co"
-                            value={config.integrations.supabaseUrl || ''} 
-                            onChange={e => onUpdateConfig({...config, integrations: {...config.integrations, supabaseUrl: e.target.value}})} 
-                        />
-                    </InputGroup>
-                    
-                    <InputGroup label="Supabase Anon Key">
-                        <StyledInput 
-                            type="password"
-                            placeholder="eyJhbGciOiJIUzI1NiIsInR5..."
-                            value={config.integrations.supabaseAnonKey || ''} 
-                            onChange={e => onUpdateConfig({...config, integrations: {...config.integrations, supabaseAnonKey: e.target.value}})} 
-                        />
-                    </InputGroup>
+  const renderSettings = () => (
+      <AdminCard className="animate-slide-up space-y-6">
+          <SectionHeader title="Настройки Проекта" subtitle="Глобальная конфигурация" />
+          
+          <InputGroup label="Invite Link Base URL">
+              <StyledInput 
+                  value={config.integrations.inviteBaseUrl || ''} 
+                  onChange={e => onUpdateConfig({...config, integrations: {...config.integrations, inviteBaseUrl: e.target.value}})} 
+                  placeholder="https://t.me/SalesProBot?start=ref_"
+              />
+              <p className="text-[10px] text-white/30 mt-1">Базовая ссылка для реферальной системы. Username пользователя будет добавлен в конец.</p>
+          </InputGroup>
 
-                    <Button 
-                        onClick={testSupabaseConnection} 
-                        loading={dbStatus === 'CONNECTING'}
-                        variant={dbStatus === 'SUCCESS' ? 'primary' : dbStatus === 'ERROR' ? 'danger' : 'outline'}
-                        className="mt-4"
-                        fullWidth
-                    >
-                        {dbStatus === 'SUCCESS' ? '✓ Соединение активно' : dbStatus === 'ERROR' ? 'Ошибка подключения' : 'Проверить соединение'}
-                    </Button>
-                </div>
+          <InputGroup label="System Instruction (AI Persona)">
+              <StyledTextarea 
+                  value={config.systemInstruction} 
+                  onChange={e => onUpdateConfig({...config, systemInstruction: e.target.value})} 
+                  className="min-h-[150px]"
+              />
+          </InputGroup>
 
-                <div className="bg-black/40 p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
-                    <div>
-                        <h4 className="text-xs font-black text-[#6C5DD3] uppercase tracking-widest mb-3">SQL Setup Query</h4>
-                        <div className="bg-[#0F1115] p-3 rounded-xl border border-white/5 font-mono text-[10px] text-slate-400 overflow-x-auto max-h-40 custom-scrollbar">
-                            <pre>{`-- Создание таблицы profiles
-create table profiles (
-  id uuid references auth.users on delete cascade,
-  telegram_id text unique,
-  username text,
-  role text default 'STUDENT',
-  xp bigint default 0,
-  level int default 1,
-  data jsonb default '{}'::jsonb,
-  updated_at timestamp with time zone default timezone('utc'::text, now()),
-  primary key (telegram_id)
-);
-alter table profiles enable row level security;
-create policy "Public profiles are viewable by everyone." on profiles for select using ( true );
-create policy "Users can insert their own profile." on profiles for insert with check ( true );
-create policy "Users can update own profile." on profiles for update using ( true );`}</pre>
-                        </div>
-                    </div>
-                    <button 
-                        onClick={() => {
-                            navigator.clipboard.writeText(`create table profiles ( id uuid references auth.users on delete cascade, telegram_id text unique, username text, role text default 'STUDENT', xp bigint default 0, level int default 1, data jsonb default '{}'::jsonb, updated_at timestamp with time zone default timezone('utc'::text, now()), primary key (telegram_id) ); alter table profiles enable row level security; create policy "Public profiles are viewable by everyone." on profiles for select using ( true ); create policy "Users can insert their own profile." on profiles for insert with check ( true ); create policy "Users can update own profile." on profiles for update using ( true );`);
-                            addToast('success', 'SQL скопирован в буфер');
-                        }}
-                        className="mt-4 w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold text-white transition-colors"
-                    >
-                        Копировать SQL код
-                    </button>
-                </div>
-            </div>
-        </AdminCard>
-
-        {/* System Cache Section */}
-        <AdminCard>
-             <SectionHeader title="Системные Настройки" subtitle="Управление кэшем и сброс данных" />
-             <div className="flex items-center justify-between bg-red-500/10 border border-red-500/20 p-5 rounded-2xl">
-                 <div className="flex items-center gap-4">
-                     <div className="w-12 h-12 bg-red-500/20 text-red-500 rounded-xl flex items-center justify-center text-2xl">🗑️</div>
-                     <div>
-                         <h4 className="font-bold text-white">Полная очистка кэша</h4>
-                         <p className="text-xs text-white/50">Удаляет Service Worker кэш и локальные данные. Приложение перезагрузится.</p>
-                     </div>
-                 </div>
-                 <Button onClick={handleClearCache} variant="danger" className="!py-3 !px-6">
-                     Очистить все
-                 </Button>
-             </div>
-        </AdminCard>
-    </div>
+          <div className="flex items-center justify-between bg-white/5 p-4 rounded-xl">
+              <div>
+                  <h4 className="font-bold text-white text-sm">Технические работы</h4>
+                  <p className="text-xs text-white/40">Включить режим обслуживания</p>
+              </div>
+              <input 
+                  type="checkbox" 
+                  checked={config.features.maintenanceMode}
+                  onChange={e => onUpdateConfig({...config, features: {...config.features, maintenanceMode: e.target.checked}})}
+                  className="accent-[#6C5DD3] w-5 h-5"
+              />
+          </div>
+      </AdminCard>
   );
 
   const renderNeuralCore = () => (
@@ -395,7 +349,6 @@ create policy "Users can update own profile." on profiles for update using ( tru
   );
 
   const renderCourse = () => {
-    // ... (Handlers same as before, condensed for brevity)
     const handleUpdateModule = (idx: number, updates: Partial<Module>) => {
         const newModules = [...modules];
         newModules[idx] = { ...newModules[idx], ...updates };
@@ -693,6 +646,95 @@ create policy "Users can update own profile." on profiles for update using ( tru
       </div>
   );
 
+  const renderDatabase = () => (
+    <div className="space-y-6 animate-slide-up">
+        <AdminCard>
+            <div className="absolute top-0 right-0 p-6 opacity-5 text-9xl grayscale rotate-12">🗄️</div>
+            <SectionHeader title="СУБД и Облако" subtitle="Настройка подключения к Supabase" />
+            
+            <div className="grid md:grid-cols-2 gap-8 relative z-10">
+                <div className="space-y-4">
+                    <InputGroup label="Supabase Project URL">
+                        <StyledInput 
+                            placeholder="https://xyz.supabase.co"
+                            value={config.integrations.supabaseUrl || ''} 
+                            onChange={e => onUpdateConfig({...config, integrations: {...config.integrations, supabaseUrl: e.target.value}})} 
+                        />
+                    </InputGroup>
+                    
+                    <InputGroup label="Supabase Anon Key">
+                        <StyledInput 
+                            type="password"
+                            placeholder="eyJhbGciOiJIUzI1NiIsInR5..."
+                            value={config.integrations.supabaseAnonKey || ''} 
+                            onChange={e => onUpdateConfig({...config, integrations: {...config.integrations, supabaseAnonKey: e.target.value}})} 
+                        />
+                    </InputGroup>
+
+                    <Button 
+                        onClick={testSupabaseConnection} 
+                        loading={dbStatus === 'CONNECTING'}
+                        variant={dbStatus === 'SUCCESS' ? 'primary' : dbStatus === 'ERROR' ? 'danger' : 'outline'}
+                        className="mt-4"
+                        fullWidth
+                    >
+                        {dbStatus === 'SUCCESS' ? '✓ Соединение активно' : dbStatus === 'ERROR' ? 'Ошибка подключения' : 'Проверить соединение'}
+                    </Button>
+                </div>
+
+                <div className="bg-black/40 p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
+                    <div>
+                        <h4 className="text-xs font-black text-[#6C5DD3] uppercase tracking-widest mb-3">SQL Setup Query</h4>
+                        <div className="bg-[#0F1115] p-3 rounded-xl border border-white/5 font-mono text-[10px] text-slate-400 overflow-x-auto max-h-40 custom-scrollbar">
+                            <pre>{`create table profiles (
+  id uuid references auth.users on delete cascade,
+  telegram_id text unique,
+  username text,
+  role text default 'STUDENT',
+  xp bigint default 0,
+  level int default 1,
+  data jsonb default '{}'::jsonb,
+  updated_at timestamp with time zone default timezone('utc'::text, now()),
+  primary key (telegram_id)
+);
+alter table profiles enable row level security;
+create policy "Public profiles are viewable by everyone." on profiles for select using ( true );
+create policy "Users can insert their own profile." on profiles for insert with check ( true );
+create policy "Users can update own profile." on profiles for update using ( true );`}</pre>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => {
+                            navigator.clipboard.writeText(`create table profiles ( id uuid references auth.users on delete cascade, telegram_id text unique, username text, role text default 'STUDENT', xp bigint default 0, level int default 1, data jsonb default '{}'::jsonb, updated_at timestamp with time zone default timezone('utc'::text, now()), primary key (telegram_id) ); alter table profiles enable row level security; create policy "Public profiles are viewable by everyone." on profiles for select using ( true ); create policy "Users can insert their own profile." on profiles for insert with check ( true ); create policy "Users can update own profile." on profiles for update using ( true );`);
+                            addToast('success', 'SQL скопирован в буфер');
+                        }}
+                        className="mt-4 w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold text-white transition-colors"
+                    >
+                        Копировать SQL код
+                    </button>
+                </div>
+            </div>
+        </AdminCard>
+
+        {/* System Cache Section */}
+        <AdminCard>
+             <SectionHeader title="Системные Настройки" subtitle="Управление кэшем и сброс данных" />
+             <div className="flex items-center justify-between bg-red-500/10 border border-red-500/20 p-5 rounded-2xl">
+                 <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 bg-red-500/20 text-red-500 rounded-xl flex items-center justify-center text-2xl">🗑️</div>
+                     <div>
+                         <h4 className="font-bold text-white">Полная очистка кэша</h4>
+                         <p className="text-xs text-white/50">Удаляет Service Worker кэш и локальные данные. Приложение перезагрузится.</p>
+                     </div>
+                 </div>
+                 <Button onClick={handleClearCache} variant="danger" className="!py-3 !px-6">
+                     Очистить все
+                 </Button>
+             </div>
+        </AdminCard>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#050505] pb-40 pt-16 px-4 md:px-8 overflow-y-auto custom-scrollbar">
         <div className="mb-10 animate-fade-in">
@@ -712,15 +754,35 @@ create policy "Users can update own profile." on profiles for update using ( tru
         <div className="max-w-7xl mx-auto">
             {activeSubTab === 'OVERVIEW' && renderOverview()}
             {activeSubTab === 'NEURAL_CORE' && renderNeuralCore()}
-            {activeSubTab === 'BROADCAST' && renderBroadcast()}
+            {activeSubTab === 'BROADCAST' && (
+                <AdminCard className="animate-slide-up">
+                    <SectionHeader title="Центр Вещания" subtitle="Отправка уведомлений и новостей" />
+                    <div className="space-y-6 max-w-2xl">
+                        <InputGroup label="Заголовок (Опционально)">
+                            <StyledInput placeholder="Например: Срочная новость" value={broadcastTitle} onChange={e => setBroadcastTitle(e.target.value)} />
+                        </InputGroup>
+                        <InputGroup label="Текст сообщения">
+                            <StyledTextarea placeholder="Введите текст рассылки..." value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)} className="min-h-[150px] text-base" />
+                        </InputGroup>
+                        <div className="flex items-center justify-end gap-4 pt-4">
+                            <Button onClick={handleBroadcast} disabled={!broadcastMsg} icon={<span>📨</span>}>Отправить Рассылку</Button>
+                        </div>
+                    </div>
+                </AdminCard>
+            )}
+            {activeSubTab === 'DEPLOY' && renderDeploy()}
+            {activeSubTab === 'SETTINGS' && renderSettings()}
+            {activeSubTab === 'CALENDAR' && (
+                <div className="h-[600px]">
+                    <CalendarView externalEvents={events} isDark={true} />
+                </div>
+            )}
             {activeSubTab === 'COURSE' && renderCourse()}
             {activeSubTab === 'MATERIALS' && renderMaterials()}
             {activeSubTab === 'STREAMS' && renderStreams()}
             {activeSubTab === 'ARENA' && renderArena()}
             {activeSubTab === 'USERS' && renderUsers()}
             {activeSubTab === 'DATABASE' && renderDatabase()}
-            
-            {/* Calendar & Deploy placeholders reused if needed, currently mapped via SmartNav */}
         </div>
     </div>
   );

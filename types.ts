@@ -138,6 +138,7 @@ export interface AppIntegrations {
   aiModelVersion?: string;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
+  inviteBaseUrl?: string; // NEW: Configurable invite link
 }
 
 export interface AppFeatures {
