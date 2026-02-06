@@ -51,12 +51,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-body transition-colors duration-300 relative overflow-hidden">
+    <div className="min-h-screen bg-transparent transition-colors duration-300 relative overflow-hidden">
       {/* BACKGROUND DECORATION */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           <div className="absolute -top-[20%] -right-[20%] w-[70%] h-[70%] bg-purple-600/10 rounded-full blur-[120px] animate-blob"></div>
           <div className="absolute top-[40%] -left-[20%] w-[60%] h-[60%] bg-blue-600/10 rounded-full blur-[100px] animate-blob animation-delay-2000"></div>
           <div className="absolute -bottom-[10%] right-[20%] w-[50%] h-[50%] bg-orange-500/5 rounded-full blur-[100px] animate-blob animation-delay-4000"></div>
+          {/* Subtle texture kept */}
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03]"></div>
       </div>
 

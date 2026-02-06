@@ -326,8 +326,21 @@ const App: React.FC = () => {
       </div>
 
       <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative">
+        {/* ATMOSPHERIC BACKGROUND VIDEO */}
+        <div className="absolute top-0 left-0 w-full h-[80vh] pointer-events-none -z-0 overflow-hidden">
+            <video 
+                autoPlay 
+                loop 
+                muted 
+                playsInline 
+                className="w-full h-full object-cover filter blur-sm opacity-40 dark:opacity-30 scale-110"
+                src="https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-background-1610-large.mp4"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-body/20 to-body"></div>
+        </div>
+
         {activeLesson ? (
-           <div className="animate-slide-up min-h-full bg-body">
+           <div className="animate-slide-up min-h-full bg-body relative z-10">
              <LessonView 
                lesson={activeLesson}
                isCompleted={userProgress.completedLessonIds.includes(activeLesson.id)}
@@ -341,7 +354,7 @@ const App: React.FC = () => {
              />
            </div>
         ) : (
-           <div key={activeTab} className="animate-fade-in min-h-full">
+           <div key={activeTab} className="animate-fade-in min-h-full relative z-10">
               {activeTab === Tab.HOME && (
                  <HomeDashboard 
                    onNavigate={setActiveTab}
