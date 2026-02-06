@@ -831,4 +831,32 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <div className="min-h-screen bg-slate-50 dark:bg-[#050505] pb-32 pt-[calc(var(--safe-top)+20px)] px-6 transition-colors duration-300">
         <div className="flex justify-between items-center mb-8">
             <div>
-                <span className="text-[#6C5DD3
+                <span className="text-[#6C5DD3] text-[10px] font-black uppercase tracking-[0.3em] mb-1 block">Command Center</span>
+                <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">ПАНЕЛЬ <br/><span className="text-slate-400 dark:text-white/30">АДМИНА</span></h1>
+            </div>
+            <div className="w-12 h-12 bg-[#6C5DD3]/10 text-[#6C5DD3] rounded-2xl flex items-center justify-center text-2xl border border-[#6C5DD3]/20">
+                🛠️
+            </div>
+        </div>
+
+        {/* Content Area */}
+        <div>
+            {activeSubTab === 'OVERVIEW' && renderOverview()}
+            {activeSubTab === 'USERS' && renderUsers()}
+            {activeSubTab === 'COURSE' && renderCourse()}
+            {activeSubTab === 'MATERIALS' && renderContent()}
+            {activeSubTab === 'STREAMS' && renderContent()}
+            {activeSubTab === 'ARENA' && renderContent()}
+            {activeSubTab === 'CALENDAR' && renderCalendar()}
+            {activeSubTab === 'SETTINGS' && renderSettings()}
+            {activeSubTab === 'NEURAL_CORE' && renderNeuralCore()}
+            {activeSubTab === 'DATABASE' && renderDatabase()}
+            {activeSubTab === 'DEPLOY' && (
+                <div className="text-center py-20">
+                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Deploy Status: Ready</p>
+                </div>
+            )}
+        </div>
+    </div>
+  );
+};
