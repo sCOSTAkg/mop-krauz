@@ -103,21 +103,33 @@ const App: React.FC = () => {
               Storage.set('appConfig', remoteConfig);
           }
 
-          // 2. Fetch Notifications
-          const notifs = await Backend.fetchNotifications();
-          if (notifs.length > prevNotifCount.current) {
-              // New notification detected!
-              const latest = notifs[notifs.length - 1];
-              if (latest && prevNotifCount.current > 0) { // Don't buzz on init load
-                  addToast(latest.type === 'ALERT' ? 'error' : 'info', latest.title);
+          // 2. Fetch Notifications (Filtered for current user)
+          const rawNotifs = await Backend.fetchNotifications();
+          const myNotifs = rawNotifs.filter(n => {
+              if (n.targetUserId && n.targetUserId !== userProgress.telegramId) return false;
+              if (n.targetRole && n.targetRole !== 'ALL' && n.targetRole !== userProgress.role) return false;
+              return true;
+          });
+
+          // Check for new notifications
+          if (myNotifs.length > prevNotifCount.current) {
+              const latest = myNotifs[myNotifs.length - 1];
+              if (latest && prevNotifCount.current > 0) { 
+                  addToast(latest.type === 'ALERT' ? 'error' : 'info', latest.title, latest.link);
               }
           }
-          prevNotifCount.current = notifs.length;
-          setNotifications(notifs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+          
+          // Merge with locally generated notifications (like role changes handled below)
+          const localNotifs = notifications.filter(n => n.id.startsWith('local-'));
+          const combined = [...myNotifs, ...localNotifs].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          
+          prevNotifCount.current = myNotifs.length;
+          setNotifications(combined);
           
           // 3. Sync User Role (Check if admin changed my role)
           if (userProgress.isAuthenticated) {
               const freshUser = await Backend.syncUser(userProgress);
+              
               if (freshUser.role !== userProgress.role || freshUser.level !== userProgress.level || Math.abs(freshUser.xp - userProgress.xp) > 50) {
                   setUserProgress(prev => ({ 
                       ...prev, 
@@ -125,8 +137,20 @@ const App: React.FC = () => {
                       level: freshUser.level,
                       xp: freshUser.xp
                   }));
+
+                  // If role changed specifically, generate a persistent local notification
                   if (freshUser.role !== userProgress.role) {
-                      addToast('info', `Ваша роль обновлена: ${freshUser.role}`);
+                      const roleNotif: AppNotification = {
+                          id: `local-role-${Date.now()}`,
+                          title: '🎖 Повышение!',
+                          message: `Командование обновило ваш статус. Ваша новая роль: ${freshUser.role}`,
+                          type: 'SUCCESS',
+                          date: new Date().toISOString(),
+                          isRead: false,
+                          targetRole: freshUser.role
+                      };
+                      setNotifications(prev => [roleNotif, ...prev]);
+                      addToast('success', roleNotif.title);
                   }
               }
           }
@@ -138,7 +162,7 @@ const App: React.FC = () => {
       // Poll every 10 seconds
       const interval = setInterval(syncData, 10000);
       return () => clearInterval(interval);
-  }, [userProgress.isAuthenticated, appConfig]);
+  }, [userProgress.isAuthenticated, appConfig, userProgress.role]); // Added role to dependency to detect changes correctly inside effect
 
   // --- THEME & PERSISTENCE ---
   useEffect(() => {
@@ -169,13 +193,25 @@ const App: React.FC = () => {
 
   // --- ACTIONS ---
 
-  const addToast = (type: 'success' | 'error' | 'info', message: string) => {
+  const addToast = (type: 'success' | 'error' | 'info', message: string, link?: string) => {
     const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, type, message }]);
+    setToasts(prev => [...prev, { id, type, message, link }]);
     if (telegram.isAvailable) telegram.haptic(type === 'error' ? 'error' : 'success');
   };
 
   const removeToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
+
+  const handleNavigate = (link?: string) => {
+      if (!link) return;
+      if (link.startsWith('http')) {
+          window.open(link, '_blank');
+      } else if (Object.values(Tab).includes(link as Tab)) {
+          setActiveTab(link as Tab);
+      } else {
+          // Handle specific deeper links if needed (e.g., "LESSON:id")
+          console.log('Navigating to:', link);
+      }
+  };
 
   const handleLogin = async (userData: any) => {
     // Optimistic Update
@@ -209,16 +245,12 @@ const App: React.FC = () => {
 
   const handleUpdateUser = (data: Partial<UserProgress>) => setUserProgress(prev => ({ ...prev, ...data }));
 
-  // Called by AdminDashboard to update the list of ALL users. 
-  // IMPORTANT: We must also check if the *current* user is in this list and update self if needed.
   const handleUpdateAllUsers = (newUsers: UserProgress[]) => {
       setAllUsers(newUsers);
       Storage.set('allUsers', newUsers);
       
-      // Check if current user was updated (e.g. Role change by Admin who is also me, or just staying in sync)
       const meInList = newUsers.find(u => u.telegramId === userProgress.telegramId);
       if (meInList) {
-          // If critical fields changed, update local session
           if (meInList.role !== userProgress.role || meInList.level !== userProgress.level || meInList.xp !== userProgress.xp) {
               setUserProgress(prev => ({
                   ...prev,
@@ -277,7 +309,7 @@ const App: React.FC = () => {
       <ChatAssistant />
 
       <div className="fixed top-[var(--safe-top)] left-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
-        {toasts.map(t => <Toast key={t.id} toast={t} onRemove={removeToast} />)}
+        {toasts.map(t => <Toast key={t.id} toast={t} onRemove={removeToast} onClick={() => handleNavigate(t.link)} />)}
       </div>
 
       <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth">

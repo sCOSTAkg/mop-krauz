@@ -205,8 +205,10 @@ export interface AppNotification {
   message: string;
   date: string;
   type: 'INFO' | 'WARNING' | 'SUCCESS' | 'ALERT';
-  targetRole?: 'ALL' | 'STUDENT' | 'CURATOR';
+  targetRole?: 'ALL' | UserRole;
+  targetUserId?: string; // For specific user targeting
   isRead?: boolean;
+  link?: string; // Actionable link (e.g., 'STREAMS', 'LESSON:l1')
 }
 
 export enum Tab {
