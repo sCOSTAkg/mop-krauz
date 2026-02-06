@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { AppConfig, Module, UserProgress, Material, Stream, CalendarEvent, ArenaScenario } from '../types';
+import React, { useState } from 'react';
+import { AppConfig, Module, UserProgress, Material, Stream, CalendarEvent, ArenaScenario, EventType } from '../types';
 import { Button } from './Button';
 
 interface AdminDashboardProps {
@@ -20,7 +20,7 @@ interface AdminDashboardProps {
   onUpdateUsers: (newUsers: UserProgress[]) => void;
   currentUser: UserProgress;
   onUpdateCurrentUser: (user: Partial<UserProgress>) => void;
-  activeSubTab: 'OVERVIEW' | 'COURSE' | 'MATERIALS' | 'STREAMS' | 'USERS' | 'SETTINGS' | 'ARENA' | 'CALENDAR' | 'NEURAL_CORE' | 'DATABASE' | 'DEPLOY';
+  activeSubTab: 'OVERVIEW' | 'COURSE' | 'MATERIALS' | 'STREAMS' | 'USERS' | 'SETTINGS' | 'ARENA' | 'CALENDAR';
   addToast: (type: 'success' | 'error' | 'info', message: string, link?: string) => void;
 }
 
@@ -39,15 +39,98 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateScenarios,
   users, 
   onUpdateUsers,
-  currentUser,
   activeSubTab,
   addToast
 }) => {
 
-  // Helper to calculate total lessons
-  const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0);
+  const [newItemText, setNewItemText] = useState('');
 
-  const renderOverview = () => (
+  // --- ACTIONS ---
+
+  const addModule = () => {
+      const newModule: Module = {
+          id: `m-${Date.now()}`,
+          title: 'Новый Модуль',
+          description: 'Описание модуля...',
+          minLevel: 1,
+          category: 'GENERAL',
+          imageUrl: 'https://picsum.photos/400/200',
+          lessons: []
+      };
+      onUpdateModules([...modules, newModule]);
+      addToast('success', 'Модуль создан');
+  };
+
+  const deleteModule = (id: string) => {
+      if (window.confirm('Удалить модуль?')) {
+          onUpdateModules(modules.filter(m => m.id !== id));
+          addToast('success', 'Модуль удален');
+      }
+  };
+
+  const addMaterial = () => {
+      const title = prompt('Название материала:');
+      if (!title) return;
+      const newMat: Material = {
+          id: `mat-${Date.now()}`,
+          title,
+          description: 'Новый материал из админки',
+          type: 'LINK',
+          url: '#'
+      };
+      onUpdateMaterials([...materials, newMat]);
+      addToast('success', 'Материал добавлен');
+  };
+
+  const addStream = () => {
+      const title = prompt('Тема эфира:');
+      if (!title) return;
+      const newStream: Stream = {
+          id: `str-${Date.now()}`,
+          title,
+          date: new Date().toISOString(),
+          youtubeUrl: '',
+          status: 'UPCOMING'
+      };
+      onUpdateStreams([...streams, newStream]);
+      addToast('success', 'Стрим запланирован');
+  };
+
+  const addEvent = () => {
+      const title = prompt('Название события:');
+      if (!title) return;
+      const newEvent: CalendarEvent = {
+          id: `ev-${Date.now()}`,
+          title,
+          description: 'Событие от штаба',
+          date: new Date().toISOString(),
+          type: EventType.OTHER,
+          durationMinutes: 60
+      };
+      onUpdateEvents([...events, newEvent]);
+      addToast('success', 'Событие добавлено в календарь');
+  };
+
+  const addScenario = () => {
+      const title = prompt('Название сценария:');
+      if (!title) return;
+      const newScenario: ArenaScenario = {
+          id: `sc-${Date.now()}`,
+          title,
+          difficulty: 'Medium',
+          clientRole: 'Скептик',
+          objective: 'Продать идею',
+          initialMessage: 'Ну давайте, удивите меня.'
+      };
+      onUpdateScenarios([...scenarios, newScenario]);
+      addToast('success', 'Сценарий создан');
+  };
+
+  // --- RENDERERS ---
+
+  const renderOverview = () => {
+    const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0);
+    return (
     <div className="space-y-6 animate-fade-in">
         <div className="grid grid-cols-2 gap-4">
             <div className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5">
@@ -72,7 +155,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
         </div>
     </div>
-  );
+  )};
 
   const renderUsers = () => (
     <div className="space-y-4 animate-fade-in">
@@ -113,12 +196,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <div className="space-y-4 animate-fade-in">
         <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-black text-slate-900 dark:text-white">Структура курса</h2>
-            <Button className="!py-2 !px-4 !text-xs">+ Модуль</Button>
+            <Button onClick={addModule} className="!py-2 !px-4 !text-xs bg-green-600 hover:bg-green-700">+ Модуль</Button>
         </div>
         <div className="space-y-4">
             {modules.map((mod) => (
-                <div key={mod.id} className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5">
-                    <div className="flex justify-between items-start mb-2">
+                <div key={mod.id} className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5 group relative">
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => deleteModule(mod.id)} className="text-red-500 text-xs font-bold uppercase bg-red-500/10 px-2 py-1 rounded">Delete</button>
+                    </div>
+                    <div className="flex justify-between items-start mb-2 pr-16">
                         <h3 className="font-black text-slate-900 dark:text-white">{mod.title}</h3>
                         <span className="text-[10px] font-bold bg-slate-100 dark:bg-white/10 px-2 py-1 rounded text-slate-500">{mod.lessons.length} уроков</span>
                     </div>
@@ -140,7 +226,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <div className="space-y-4 animate-fade-in">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-black text-slate-900 dark:text-white">База Знаний</h2>
-        <Button className="!py-2 !px-4 !text-xs" onClick={() => addToast('info', 'Функция добавления в разработке')}>+ Материал</Button>
+        <Button onClick={addMaterial} className="!py-2 !px-4 !text-xs bg-green-600 hover:bg-green-700">+ Материал</Button>
       </div>
       {materials.map(mat => (
         <div key={mat.id} className="bg-white dark:bg-[#14161B] p-4 rounded-2xl border border-slate-200 dark:border-white/5 flex justify-between items-center">
@@ -148,7 +234,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
              <h4 className="font-bold text-sm dark:text-white">{mat.title}</h4>
              <p className="text-[10px] text-slate-500 uppercase">{mat.type}</p>
            </div>
-           <button className="text-red-500 text-xs font-bold uppercase" onClick={() => {
+           <button className="text-red-500 text-xs font-bold uppercase hover:bg-red-500/10 px-2 py-1 rounded" onClick={() => {
              onUpdateMaterials(materials.filter(m => m.id !== mat.id));
              addToast('success', 'Материал удален');
            }}>Delete</button>
@@ -161,7 +247,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <div className="space-y-4 animate-fade-in">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-black text-slate-900 dark:text-white">Эфиры</h2>
-        <Button className="!py-2 !px-4 !text-xs" onClick={() => addToast('info', 'Функция добавления в разработке')}>+ Стрим</Button>
+        <Button onClick={addStream} className="!py-2 !px-4 !text-xs bg-green-600 hover:bg-green-700">+ Стрим</Button>
       </div>
       {streams.map(str => (
         <div key={str.id} className="bg-white dark:bg-[#14161B] p-4 rounded-2xl border border-slate-200 dark:border-white/5 flex justify-between items-center">
@@ -169,7 +255,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
              <h4 className="font-bold text-sm dark:text-white">{str.title}</h4>
              <p className="text-[10px] text-slate-500 uppercase">{new Date(str.date).toLocaleDateString()} • {str.status}</p>
            </div>
-           <button className="text-red-500 text-xs font-bold uppercase" onClick={() => {
+           <button className="text-red-500 text-xs font-bold uppercase hover:bg-red-500/10 px-2 py-1 rounded" onClick={() => {
              onUpdateStreams(streams.filter(s => s.id !== str.id));
              addToast('success', 'Стрим удален');
            }}>Delete</button>
@@ -182,7 +268,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <div className="space-y-4 animate-fade-in">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-black text-slate-900 dark:text-white">Сценарии Арены</h2>
-        <Button className="!py-2 !px-4 !text-xs" onClick={() => addToast('info', 'Функция добавления в разработке')}>+ Сценарий</Button>
+        <Button onClick={addScenario} className="!py-2 !px-4 !text-xs bg-green-600 hover:bg-green-700">+ Сценарий</Button>
       </div>
       {scenarios.map(sc => (
         <div key={sc.id} className="bg-white dark:bg-[#14161B] p-4 rounded-2xl border border-slate-200 dark:border-white/5">
@@ -191,12 +277,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <h4 className="font-bold text-sm dark:text-white">{sc.title}</h4>
                 <p className="text-[10px] text-slate-500 uppercase">{sc.difficulty} • {sc.clientRole}</p>
              </div>
-             <button className="text-red-500 text-xs font-bold uppercase" onClick={() => {
+             <button className="text-red-500 text-xs font-bold uppercase hover:bg-red-500/10 px-2 py-1 rounded" onClick={() => {
                onUpdateScenarios(scenarios.filter(s => s.id !== sc.id));
                addToast('success', 'Сценарий удален');
              }}>Delete</button>
            </div>
            <p className="text-xs text-slate-500 mt-2">{sc.objective}</p>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderCalendar = () => (
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-black text-slate-900 dark:text-white">Календарь</h2>
+        <Button onClick={addEvent} className="!py-2 !px-4 !text-xs bg-green-600 hover:bg-green-700">+ Событие</Button>
+      </div>
+      {events.map(ev => (
+        <div key={ev.id} className="bg-white dark:bg-[#14161B] p-4 rounded-2xl border border-slate-200 dark:border-white/5 flex justify-between items-center">
+           <div>
+             <h4 className="font-bold text-sm dark:text-white">{ev.title}</h4>
+             <p className="text-[10px] text-slate-500 uppercase">{new Date(ev.date).toLocaleDateString()} • {ev.type}</p>
+           </div>
+           <button className="text-red-500 text-xs font-bold uppercase hover:bg-red-500/10 px-2 py-1 rounded" onClick={() => {
+             onUpdateEvents(events.filter(e => e.id !== ev.id));
+             addToast('success', 'Событие удалено');
+           }}>Delete</button>
         </div>
       ))}
     </div>
@@ -241,15 +348,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     </div>
   );
 
-  // Placeholder for unimplemented tabs
-  const renderPlaceholder = (title: string) => (
-      <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
-          <div className="text-4xl mb-4 opacity-30">🚧</div>
-          <h3 className="text-lg font-black text-slate-900 dark:text-white mb-2">{title}</h3>
-          <p className="text-xs text-slate-500 uppercase tracking-widest">Раздел в разработке</p>
-      </div>
-  );
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#050505] pb-32 pt-[calc(var(--safe-top)+20px)] px-6 transition-colors duration-300">
         <div className="flex justify-between items-center mb-8">
@@ -270,10 +368,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             {activeSubTab === 'MATERIALS' && renderMaterials()}
             {activeSubTab === 'STREAMS' && renderStreams()}
             {activeSubTab === 'ARENA' && renderScenarios()}
+            {activeSubTab === 'CALENDAR' && renderCalendar()}
             {activeSubTab === 'SETTINGS' && renderSettings()}
-            
-            {/* Placeholders for others */}
-            {['CALENDAR', 'NEURAL_CORE', 'DATABASE', 'DEPLOY'].includes(activeSubTab) && renderPlaceholder(activeSubTab)}
         </div>
     </div>
   );

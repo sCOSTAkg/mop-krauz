@@ -18,7 +18,6 @@ import { NotebookView } from './components/NotebookView';
 import { MaterialsView } from './components/MaterialsView';
 import { StreamsView } from './components/StreamsView';
 import { SystemHealthAgent } from './components/SystemHealthAgent';
-import { ChatAssistant } from './components/ChatAssistant';
 import { Backend } from './services/backendService';
 import { XPService } from './services/xpService';
 
@@ -32,7 +31,6 @@ const DEFAULT_CONFIG: AppConfig = {
       googleDriveFolderId: '', 
       crmWebhookUrl: '', 
       aiModelVersion: 'gemini-3-flash-preview',
-      // Neon DB Connection String (Note: Used for configuration display, connection requires backend)
       databaseUrl: process.env.DATABASE_URL || "postgresql://neondb_owner:npg_8gtkumX3BAex@ep-raspy-salad-aiz5pncb-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require"
   },
   features: { enableRealTimeSync: true, autoApproveHomework: false, maintenanceMode: false, allowStudentChat: true, publicLeaderboard: true },
@@ -71,7 +69,7 @@ const DEFAULT_USER: UserProgress = {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.HOME);
-  const [adminSubTab, setAdminSubTab] = useState<'OVERVIEW' | 'COURSE' | 'MATERIALS' | 'STREAMS' | 'USERS' | 'SETTINGS' | 'ARENA' | 'CALENDAR' | 'NEURAL_CORE' | 'DATABASE' | 'DEPLOY'>('OVERVIEW');
+  const [adminSubTab, setAdminSubTab] = useState<'OVERVIEW' | 'COURSE' | 'MATERIALS' | 'STREAMS' | 'USERS' | 'SETTINGS' | 'ARENA' | 'CALENDAR'>('OVERVIEW');
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [showWelcome, setShowWelcome] = useState(true);
@@ -257,18 +255,7 @@ const App: React.FC = () => {
   const handleUpdateAllUsers = (newUsers: UserProgress[]) => {
       setAllUsers(newUsers);
       Storage.set('allUsers', newUsers);
-      
-      const meInList = newUsers.find(u => u.telegramId === userProgress.telegramId);
-      if (meInList) {
-          if (meInList.role !== userProgress.role || meInList.level !== userProgress.level || meInList.xp !== userProgress.xp) {
-              setUserProgress(prev => ({
-                  ...prev,
-                  role: meInList.role,
-                  level: meInList.level,
-                  xp: meInList.xp
-              }));
-          }
-      }
+      Backend.saveUser(userProgress); // Sync current
   };
 
   const handleCompleteLesson = (lessonId: string, xpBonus: number) => {
@@ -314,7 +301,7 @@ const App: React.FC = () => {
     <div className="flex flex-col h-[100dvh] bg-body text-text-primary transition-colors duration-300 overflow-hidden">
       
       <SystemHealthAgent config={appConfig.systemAgent} />
-      <ChatAssistant />
+      {/* Chat Assistant Removed as requested */}
 
       <div className="fixed top-[var(--safe-top)] left-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
         {toasts.map(t => <Toast key={t.id} toast={t} onRemove={removeToast} onClick={() => handleNavigate(t.link)} />)}
@@ -410,7 +397,7 @@ const App: React.FC = () => {
                     onUpdateUsers={handleUpdateAllUsers}
                     currentUser={userProgress}
                     onUpdateCurrentUser={handleUpdateUser}
-                    activeSubTab={adminSubTab}
+                    activeSubTab={adminSubTab as any}
                     addToast={addToast}
                   />
               )}
