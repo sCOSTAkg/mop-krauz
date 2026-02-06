@@ -43,7 +43,7 @@ export const SmartNav: React.FC<SmartNavProps> = ({
 
   // Tabs ordered for swipe logic
   const TABS_ORDER = [Tab.HOME, Tab.PROFILE];
-  if (role === 'CURATOR') TABS_ORDER.push(Tab.CURATOR_DASHBOARD);
+  if (role === 'CURATOR' || role === 'ADMIN') TABS_ORDER.push(Tab.CURATOR_DASHBOARD);
   if (role === 'ADMIN') TABS_ORDER.push(Tab.ADMIN_DASHBOARD);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -139,7 +139,7 @@ export const SmartNav: React.FC<SmartNavProps> = ({
             />
 
             {/* Role Based Buttons */}
-            {role === 'CURATOR' && (
+            {(role === 'CURATOR' || role === 'ADMIN') && (
                <NavButton 
                   tab={Tab.CURATOR_DASHBOARD}
                   isActive={activeTab === Tab.CURATOR_DASHBOARD}

@@ -320,7 +320,10 @@ const App: React.FC = () => {
               )}
 
               {activeTab === Tab.CURATOR_DASHBOARD && userProgress.role !== 'STUDENT' && (
-                  <CuratorDashboard />
+                  <CuratorDashboard 
+                      users={allUsers}
+                      modules={modules}
+                  />
               )}
 
               {activeTab === Tab.ADMIN_DASHBOARD && userProgress.role === 'ADMIN' && (
