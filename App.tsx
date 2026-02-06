@@ -396,20 +396,9 @@ const App: React.FC = () => {
                     onUpdateConfig={updateConfig}
                     modules={modules}
                     onUpdateModules={updateModules}
-                    materials={materials}
-                    onUpdateMaterials={updateMaterials}
-                    streams={streams}
-                    onUpdateStreams={updateStreams}
-                    events={events}
-                    onUpdateEvents={updateEvents}
-                    scenarios={scenarios}
-                    onUpdateScenarios={updateScenarios}
                     users={allUsers}
                     onUpdateUsers={handleUpdateAllUsers}
                     currentUser={userProgress}
-                    onUpdateCurrentUser={handleUpdateUser}
-                    activeSubTab={adminSubTab}
-                    addToast={addToast}
                   />
               )}
            </>
