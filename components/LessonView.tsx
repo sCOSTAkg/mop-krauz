@@ -356,11 +356,11 @@ export const LessonView: React.FC<LessonViewProps> = ({
             <div className="markdown-content text-text-primary/90">
                 <ReactMarkdown
                     components={{
-                        h1: (p) => <h1 className="text-2xl font-black mb-6 text-text-primary tracking-tight" {...p} />,
-                        h2: (p) => <h2 className="text-xl font-bold mt-10 mb-4 text-text-primary border-l-4 border-[#6C5DD3] pl-4" {...p} />,
-                        p: (p) => <p className="mb-6 leading-relaxed font-medium opacity-80" {...p} />,
-                        ul: (p) => <ul className="list-disc pl-6 mb-6 space-y-2 marker:text-[#6C5DD3]" {...p} />,
-                        blockquote: (p) => <blockquote className="border-l-4 border-[#6C5DD3] bg-[#6C5DD3]/5 p-5 rounded-2xl italic my-8 text-text-primary/70" {...p} />,
+                        h1: ({node, ...p}) => <h1 className="text-2xl font-black mb-6 text-text-primary tracking-tight" {...p} />,
+                        h2: ({node, ...p}) => <h2 className="text-xl font-bold mt-10 mb-4 text-text-primary border-l-4 border-[#6C5DD3] pl-4" {...p} />,
+                        p: ({node, ...p}) => <p className="mb-6 leading-relaxed font-medium opacity-80" {...p} />,
+                        ul: ({node, ...p}) => <ul className="list-disc pl-6 mb-6 space-y-2 marker:text-[#6C5DD3]" {...p} />,
+                        blockquote: ({node, ...p}) => <blockquote className="border-l-4 border-[#6C5DD3] bg-[#6C5DD3]/5 p-5 rounded-2xl italic my-8 text-text-primary/70" {...p} />,
                     }}
                 >
                     {lesson.content}

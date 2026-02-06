@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Logger } from '../services/logger';
 import { Storage } from '../services/storage';
-import { SystemAgentConfig, AppConfig, UserProgress, Module, AgentDecision } from '../types';
+import { SystemAgentConfig, AppConfig, UserProgress, Module, AgentDecision, AppNotification } from '../types';
 import { telegram } from '../services/telegramService';
 import { consultSystemAgent } from '../services/geminiService';
 import { Backend } from '../services/backendService';
@@ -14,7 +14,7 @@ interface SystemHealthAgentProps {
     modules: Module[];
     onUpdateConfig: (cfg: AppConfig) => void;
     onUpdateModules: (mods: Module[]) => void;
-    onSendNotification: (n: any) => void;
+    onSendNotification: (n: AppNotification) => void;
 }
 
 type AgentStatus = 'SLEEPING' | 'ANALYZING' | 'EXECUTING' | 'COOLDOWN';

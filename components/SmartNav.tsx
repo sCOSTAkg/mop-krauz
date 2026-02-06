@@ -8,7 +8,7 @@ interface SmartNavProps {
   setActiveTab: (tab: Tab) => void;
   role: UserRole;
   adminSubTab: string;
-  setAdminSubTab: (tab: any) => void;
+  setAdminSubTab: (tab: string) => void;
   isLessonActive: boolean;
   onExitLesson: () => void;
   notifications: AppNotification[];

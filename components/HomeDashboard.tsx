@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Tab, UserProgress, Lesson, Material, Stream, ArenaScenario, AppNotification } from '../types';
+import { Tab, UserProgress, Lesson, Material, Stream, ArenaScenario, AppNotification, Module } from '../types';
 import { ModuleList } from './ModuleList';
 import { telegram } from '../services/telegramService';
 
@@ -8,7 +8,7 @@ interface HomeDashboardProps {
   onNavigate: (tab: Tab) => void;
   userProgress: UserProgress;
   onProfileClick: () => void;
-  modules: any[];
+  modules: Module[];
   materials: Material[];
   streams: Stream[];
   scenarios: ArenaScenario[];

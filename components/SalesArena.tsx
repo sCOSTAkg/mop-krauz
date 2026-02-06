@@ -76,15 +76,17 @@ export const SalesArena: React.FC = () => {
             text: inputText,
             timestamp: new Date().toISOString()
         };
-        const updatedHistory = [...history, userMsg];
-        setHistory(updatedHistory);
+        
+        // Optimistic Update
+        setHistory(prev => [...prev, userMsg]);
         setInputText('');
-        setHint(null); // Clear hint on send
+        setHint(null); 
         setIsLoading(true);
         telegram.haptic('light');
 
         const responseText = await sendMessageToGemini(chatSession, userMsg.text);
-        setHistory([...updatedHistory, {
+        
+        setHistory(prev => [...prev, {
             id: (Date.now() + 1).toString(),
             role: 'model',
             text: responseText,
