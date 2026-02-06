@@ -319,26 +319,26 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-body text-text-primary transition-colors duration-300 overflow-hidden">
+    <div className="flex flex-col h-[100dvh] bg-body text-text-primary transition-colors duration-300 overflow-hidden relative">
       
+      {/* ATMOSPHERIC BACKGROUND VIDEO (Fixed) */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+          <video 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="w-full h-full object-cover filter blur-sm opacity-30 dark:opacity-20 scale-110"
+              src="https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-background-1610-large.mp4"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-body/40 to-body"></div>
+      </div>
+
       <div className="fixed top-[var(--safe-top)] left-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
         {toasts.map(t => <Toast key={t.id} toast={t} onRemove={removeToast} onClick={() => handleNavigate(t.link)} />)}
       </div>
 
-      <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative">
-        {/* ATMOSPHERIC BACKGROUND VIDEO */}
-        <div className="absolute top-0 left-0 w-full h-[80vh] pointer-events-none -z-0 overflow-hidden">
-            <video 
-                autoPlay 
-                loop 
-                muted 
-                playsInline 
-                className="w-full h-full object-cover filter blur-sm opacity-40 dark:opacity-30 scale-110"
-                src="https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-background-1610-large.mp4"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-body/20 to-body"></div>
-        </div>
-
+      <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative z-10">
         {activeLesson ? (
            <div className="animate-slide-up min-h-full bg-body relative z-10">
              <LessonView 
@@ -460,7 +460,7 @@ const App: React.FC = () => {
                     users={allUsers}
                     onUpdateUsers={handleUpdateAllUsers}
                     currentUser={userProgress}
-                    activeSubTab={adminSubTab as any}
+                    activeSubTab={adminSubTab}
                     onSendBroadcast={handleSendBroadcast}
                     notifications={notifications}
                     onClearNotifications={handleClearNotifications}

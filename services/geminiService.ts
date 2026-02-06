@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Chat, GenerateContentResponse, Type } from "@google/genai";
 import { AppConfig, UserProgress, Module, AgentDecision } from '../types';
 
@@ -98,7 +97,7 @@ export const getArenaHint = async (
       Lang: Russian.
     `;
 
-    const response = await retryOperation(() => ai.models.generateContent({
+    const response: GenerateContentResponse = await retryOperation(() => ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: { 
@@ -133,7 +132,7 @@ ${history.map(m => `${m.role === 'user' ? 'Продавец' : 'Клиент'}: 
 3. 2 критические ошибки или зоны роста.
 `;
 
-    const response = await retryOperation(async () => {
+    const response: GenerateContentResponse = await retryOperation(async () => {
         try {
             return await ai.models.generateContent({
                 model: 'gemini-3-pro-preview', 
@@ -196,7 +195,7 @@ export const checkHomeworkWithAI = async (
           `
       });
   
-      const response = await retryOperation(() => ai.models.generateContent({
+      const response: GenerateContentResponse = await retryOperation(() => ai.models.generateContent({
         model: 'gemini-3-flash-preview', 
         contents: { parts },
         config: {
@@ -295,7 +294,7 @@ export const consultSystemAgent = async (
         For SEND_NOTIFICATION, payload: AppNotification
         `;
 
-        const response = await retryOperation(async () => {
+        const response: GenerateContentResponse = await retryOperation(async () => {
             try {
                 return await ai.models.generateContent({
                     model: 'gemini-3-pro-preview', 
@@ -343,7 +342,7 @@ export const verifyStoryScreenshot = async (base64Image: string): Promise<boolea
         Return JSON: { "isStory": boolean }
         `;
 
-        const response = await retryOperation(() => ai.models.generateContent({
+        const response: GenerateContentResponse = await retryOperation(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: {
                 parts: [

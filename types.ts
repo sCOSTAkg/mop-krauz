@@ -1,3 +1,4 @@
+import React from 'react';
 
 export type HomeworkType = 'TEXT' | 'PHOTO' | 'VIDEO' | 'FILE';
 

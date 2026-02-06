@@ -21,7 +21,7 @@ interface AdminDashboardProps {
   users: UserProgress[];
   onUpdateUsers: (newUsers: UserProgress[]) => void;
   currentUser: UserProgress;
-  activeSubTab: 'OVERVIEW' | 'COURSE' | 'MATERIALS' | 'STREAMS' | 'USERS' | 'SETTINGS' | 'ARENA' | 'NEURAL_CORE';
+  activeSubTab: 'OVERVIEW' | 'COURSE' | 'MATERIALS' | 'STREAMS' | 'USERS' | 'SETTINGS' | 'ARENA' | 'CALENDAR';
   onSendBroadcast: (notif: AppNotification) => void;
   notifications: AppNotification[];
   onClearNotifications: () => void;
@@ -381,7 +381,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         )}
 
         {/* --- VIEW: STREAMS & EVENTS --- */}
-        {activeSubTab === 'STREAMS' && (
+        {(activeSubTab === 'STREAMS' || activeSubTab === 'CALENDAR') && (
             <div className="space-y-8 animate-slide-up">
                 {/* Streams Section */}
                 <div className="space-y-4">
