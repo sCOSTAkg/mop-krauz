@@ -83,7 +83,7 @@ export const SmartNav: React.FC<SmartNavProps> = ({
   }
 
   // Helper for nav buttons to keep JSX clean
-  const NavButton = ({ tab, icon, isActive }: { tab: Tab, icon: React.ReactNode, isActive: boolean }) => (
+  const NavButton = ({ tab, icon, isActive, showBadge = false }: { tab: Tab, icon: React.ReactNode, isActive: boolean, showBadge?: boolean }) => (
       <button 
         onClick={() => setActiveTab(tab)} 
         className={`relative w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-500 ease-out 
@@ -95,6 +95,9 @@ export const SmartNav: React.FC<SmartNavProps> = ({
              <div className="absolute -bottom-2 w-1.5 h-1.5 rounded-full bg-[#FFAB7B] animate-bounce shadow-[0_0_10px_#FFAB7B]"></div>
              <div className="absolute inset-0 bg-[#FFAB7B]/10 rounded-2xl blur-xl animate-pulse"></div>
            </>
+        )}
+        {showBadge && (
+            <div className="absolute top-0 right-0 text-[10px] font-black text-[#6C5DD3] animate-pulse">*</div>
         )}
         <div className={`transition-transform duration-300 ${isActive ? 'rotate-[360deg]' : ''}`}>
             {icon}
@@ -149,6 +152,7 @@ export const SmartNav: React.FC<SmartNavProps> = ({
                <NavButton 
                   tab={Tab.ADMIN_DASHBOARD}
                   isActive={activeTab === Tab.ADMIN_DASHBOARD}
+                  showBadge={true} // Asterisk requested
                   icon={<svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>}
                />
             )}

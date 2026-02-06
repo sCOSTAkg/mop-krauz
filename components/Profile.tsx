@@ -26,11 +26,19 @@ export const Profile: React.FC<ProfileProps> = ({ userProgress, onLogout, allUse
   const avatarRef = useRef<HTMLDivElement>(null);
 
   // Settings State
-  const [editName, setEditName] = useState(userProgress.name);
+  const [editName, setEditName] = useState(userProgress.name || '');
   const [editTelegram, setEditTelegram] = useState(userProgress.telegramUsername || '');
   const [editInstagram, setEditInstagram] = useState(userProgress.instagram || '');
   const [editAbout, setEditAbout] = useState(userProgress.aboutMe || '');
-  const [editNotifications, setEditNotifications] = useState(userProgress.notifications);
+  
+  // Use a default notifications object if undefined to prevent crash
+  const safeNotifications = userProgress.notifications || { 
+      pushEnabled: false, 
+      telegramSync: false, 
+      deadlineReminders: false, 
+      chatNotifications: false 
+  };
+  const [editNotifications, setEditNotifications] = useState(safeNotifications);
 
   const [isSaving, setIsSaving] = useState(false);
   const [storyFile, setStoryFile] = useState<string | null>(null);

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { AppConfig, Module, UserProgress, Material, Stream, CalendarEvent, ArenaScenario, EventType, AppNotification, Lesson, UserRole } from '../types';
+import { AppConfig, Module, UserProgress, Material, Stream, CalendarEvent, ArenaScenario, EventType, AppNotification, Lesson, UserRole, AIProviderId } from '../types';
 import { Button } from './Button';
 
 interface AdminDashboardProps {
@@ -95,9 +95,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             )}
 
             <h2 className="text-xl font-black uppercase text-slate-900 dark:text-white">Личный состав ({users.length})</h2>
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {users.map((u, idx) => (
-                    <div key={idx} className="bg-white dark:bg-[#14161B] p-4 rounded-2xl border border-slate-200 dark:border-white/5 flex justify-between items-center group hover:border-[#6C5DD3]/30 transition-all">
+                    <div key={idx} className="bg-white dark:bg-[#14161B] p-4 rounded-2xl border border-slate-200 dark:border-white/5 flex justify-between items-center group hover:border-[#6C5DD3]/30 transition-all shadow-sm">
                         <div className="flex items-center gap-3">
                             <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-10 h-10 rounded-full bg-slate-200 object-cover" />
                             <div>
@@ -118,6 +118,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // --- COURSE MANAGEMENT ---
   const renderCourse = () => {
+      // ... (Keep existing helpers: addNewModule, updateModule, deleteModule, saveLesson, createLesson, deleteLesson)
       const addNewModule = () => {
           const newMod: Module = {
               id: `mod-${Date.now()}`,
@@ -144,19 +145,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const saveLesson = () => {
           if (!editingLesson) return;
           const { moduleId, lesson } = editingLesson;
-          
           const modIndex = modules.findIndex(m => m.id === moduleId);
           if (modIndex === -1) return;
-
           const updatedModules = [...modules];
           const lessonIndex = updatedModules[modIndex].lessons.findIndex(l => l.id === lesson.id);
-
-          if (lessonIndex >= 0) {
-              updatedModules[modIndex].lessons[lessonIndex] = lesson;
-          } else {
-              updatedModules[modIndex].lessons.push(lesson);
-          }
-          
+          if (lessonIndex >= 0) { updatedModules[modIndex].lessons[lessonIndex] = lesson; } 
+          else { updatedModules[modIndex].lessons.push(lesson); }
           onUpdateModules(updatedModules);
           setEditingLesson(null);
           addToast('success', 'Урок сохранен');
@@ -238,68 +232,70 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <Button onClick={addNewModule} className="!py-2 !px-4 !text-xs">+ Модуль</Button>
               </div>
 
-              {modules.map(mod => (
-                  <div key={mod.id} className="bg-white dark:bg-[#14161B] rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden">
-                      {/* Module Header */}
-                      <div className="p-4 bg-slate-50 dark:bg-white/5 flex flex-col gap-3">
-                          <input 
-                              value={mod.title} 
-                              onChange={(e) => updateModule(mod.id, 'title', e.target.value)}
-                              className="bg-transparent text-lg font-black text-slate-900 dark:text-white w-full border-b border-transparent focus:border-[#6C5DD3] outline-none placeholder-gray-500"
-                              placeholder="Название модуля"
-                          />
-                          <input 
-                              value={mod.description}
-                              onChange={(e) => updateModule(mod.id, 'description', e.target.value)}
-                              className="bg-transparent text-xs text-slate-500 w-full outline-none"
-                              placeholder="Краткое описание"
-                          />
-                          <div className="flex justify-between items-center mt-2">
-                              <div className="flex gap-2">
-                                  <input 
-                                      type="number" 
-                                      value={mod.minLevel}
-                                      onChange={(e) => updateModule(mod.id, 'minLevel', parseInt(e.target.value))}
-                                      className="w-16 bg-slate-200 dark:bg-black/20 rounded-lg px-2 py-1 text-xs font-bold text-center"
-                                      placeholder="Lvl"
-                                  />
-                                  <select 
-                                      value={mod.category}
-                                      onChange={(e) => updateModule(mod.id, 'category', e.target.value)}
-                                      className="bg-slate-200 dark:bg-black/20 rounded-lg px-2 py-1 text-xs font-bold"
-                                  >
-                                      <option value="GENERAL">General</option>
-                                      <option value="SALES">Sales</option>
-                                      <option value="PSYCHOLOGY">Psychology</option>
-                                      <option value="TACTICS">Tactics</option>
-                                  </select>
-                              </div>
-                              <div className="flex gap-2">
-                                  <button onClick={() => setEditingModuleId(editingModuleId === mod.id ? null : mod.id)} className="text-[10px] font-bold uppercase text-[#6C5DD3] bg-[#6C5DD3]/10 px-3 py-1.5 rounded-lg hover:bg-[#6C5DD3] hover:text-white transition-all">
-                                      {editingModuleId === mod.id ? 'Свернуть' : `Уроки (${mod.lessons.length})`}
-                                  </button>
-                                  <button onClick={() => deleteModule(mod.id)} className="text-[10px] font-bold uppercase text-red-500 bg-red-500/10 px-3 py-1.5 rounded-lg hover:bg-red-500 hover:text-white transition-all">Удалить</button>
-                              </div>
-                          </div>
-                      </div>
+              <div className="grid grid-cols-1 gap-4">
+                {modules.map(mod => (
+                    <div key={mod.id} className="bg-white dark:bg-[#14161B] rounded-2xl border border-slate-200 dark:border-white/5 overflow-hidden">
+                        {/* Module Header */}
+                        <div className="p-4 bg-slate-50 dark:bg-white/5 flex flex-col gap-3">
+                            <input 
+                                value={mod.title} 
+                                onChange={(e) => updateModule(mod.id, 'title', e.target.value)}
+                                className="bg-transparent text-lg font-black text-slate-900 dark:text-white w-full border-b border-transparent focus:border-[#6C5DD3] outline-none placeholder-gray-500"
+                                placeholder="Название модуля"
+                            />
+                            <input 
+                                value={mod.description}
+                                onChange={(e) => updateModule(mod.id, 'description', e.target.value)}
+                                className="bg-transparent text-xs text-slate-500 w-full outline-none"
+                                placeholder="Краткое описание"
+                            />
+                            <div className="flex flex-wrap justify-between items-center mt-2 gap-2">
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="number" 
+                                        value={mod.minLevel}
+                                        onChange={(e) => updateModule(mod.id, 'minLevel', parseInt(e.target.value))}
+                                        className="w-16 bg-slate-200 dark:bg-black/20 rounded-lg px-2 py-1 text-xs font-bold text-center"
+                                        placeholder="Lvl"
+                                    />
+                                    <select 
+                                        value={mod.category}
+                                        onChange={(e) => updateModule(mod.id, 'category', e.target.value)}
+                                        className="bg-slate-200 dark:bg-black/20 rounded-lg px-2 py-1 text-xs font-bold"
+                                    >
+                                        <option value="GENERAL">General</option>
+                                        <option value="SALES">Sales</option>
+                                        <option value="PSYCHOLOGY">Psychology</option>
+                                        <option value="TACTICS">Tactics</option>
+                                    </select>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setEditingModuleId(editingModuleId === mod.id ? null : mod.id)} className="text-[10px] font-bold uppercase text-[#6C5DD3] bg-[#6C5DD3]/10 px-3 py-1.5 rounded-lg hover:bg-[#6C5DD3] hover:text-white transition-all">
+                                        {editingModuleId === mod.id ? 'Свернуть' : `Уроки (${mod.lessons.length})`}
+                                    </button>
+                                    <button onClick={() => deleteModule(mod.id)} className="text-[10px] font-bold uppercase text-red-500 bg-red-500/10 px-3 py-1.5 rounded-lg hover:bg-red-500 hover:text-white transition-all">Удалить</button>
+                                </div>
+                            </div>
+                        </div>
 
-                      {/* Lessons List */}
-                      {editingModuleId === mod.id && (
-                          <div className="p-4 space-y-3 border-t border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-black/20">
-                              {mod.lessons.map(les => (
-                                  <div key={les.id} className="bg-white dark:bg-[#1F2128] p-3 rounded-xl border border-slate-200 dark:border-white/5 flex justify-between items-center group">
-                                      <span className="text-sm font-bold text-slate-800 dark:text-white truncate max-w-[70%]">{les.title}</span>
-                                      <div className="flex gap-2">
-                                          <button onClick={() => setEditingLesson({moduleId: mod.id, lesson: les})} className="text-[#6C5DD3] text-xs font-bold uppercase hover:bg-[#6C5DD3]/10 px-2 py-1 rounded">Edit</button>
-                                          <button onClick={() => deleteLesson(mod.id, les.id)} className="text-red-500 text-xs font-bold uppercase hover:bg-red-500/10 px-2 py-1 rounded">✕</button>
-                                      </div>
-                                  </div>
-                              ))}
-                              <Button onClick={() => createLesson(mod.id)} fullWidth variant="secondary" className="!py-3 !text-xs border-dashed border-2 border-slate-300 dark:border-white/10 bg-transparent hover:bg-slate-200 dark:hover:bg-white/5 text-slate-500">+ Добавить урок</Button>
-                          </div>
-                      )}
-                  </div>
-              ))}
+                        {/* Lessons List */}
+                        {editingModuleId === mod.id && (
+                            <div className="p-4 space-y-3 border-t border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-black/20">
+                                {mod.lessons.map(les => (
+                                    <div key={les.id} className="bg-white dark:bg-[#1F2128] p-3 rounded-xl border border-slate-200 dark:border-white/5 flex justify-between items-center group">
+                                        <span className="text-sm font-bold text-slate-800 dark:text-white truncate max-w-[70%]">{les.title}</span>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setEditingLesson({moduleId: mod.id, lesson: les})} className="text-[#6C5DD3] text-xs font-bold uppercase hover:bg-[#6C5DD3]/10 px-2 py-1 rounded">Edit</button>
+                                            <button onClick={() => deleteLesson(mod.id, les.id)} className="text-red-500 text-xs font-bold uppercase hover:bg-red-500/10 px-2 py-1 rounded">✕</button>
+                                        </div>
+                                    </div>
+                                ))}
+                                <Button onClick={() => createLesson(mod.id)} fullWidth variant="secondary" className="!py-3 !text-xs border-dashed border-2 border-slate-300 dark:border-white/10 bg-transparent hover:bg-slate-200 dark:hover:bg-white/5 text-slate-500">+ Добавить урок</Button>
+                            </div>
+                        )}
+                    </div>
+                ))}
+              </div>
           </div>
       );
   };
@@ -321,59 +317,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       return (
           <div className="space-y-8 pb-20 animate-fade-in">
               {/* Materials */}
-              <div>
-                  <div className="flex justify-between mb-4 items-center"><h3 className="font-bold uppercase text-sm text-slate-900 dark:text-white">База Знаний</h3><Button onClick={addMat} className="!py-1 !px-3 !text-[10px]">+</Button></div>
-                  <div className="space-y-3">
-                      {materials.map(m => (
-                          <div key={m.id} className="bg-white dark:bg-[#14161B] p-4 rounded-xl border border-slate-200 dark:border-white/5 text-xs space-y-2 relative group">
-                              <div className="flex gap-2">
-                                  <input value={m.title} onChange={e => updateMat(m.id, 'title', e.target.value)} className="font-bold flex-1 bg-transparent border-b border-transparent focus:border-[#6C5DD3] outline-none text-slate-900 dark:text-white" placeholder="Title" />
-                                  <select value={m.type} onChange={e => updateMat(m.id, 'type', e.target.value)} className="bg-slate-100 dark:bg-white/5 rounded px-2 text-[10px] outline-none"><option value="LINK">Link</option><option value="PDF">PDF</option><option value="VIDEO">Video</option></select>
-                                  <button onClick={() => onUpdateMaterials(materials.filter(x => x.id !== m.id))} className="text-red-500 hover:bg-red-500/10 px-2 rounded">✕</button>
-                              </div>
-                              <input value={m.url} onChange={e => updateMat(m.id, 'url', e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 p-2 rounded text-slate-600 dark:text-white/60" placeholder="URL" />
-                          </div>
-                      ))}
-                  </div>
-              </div>
+              {activeSubTab === 'MATERIALS' && (
+                <div>
+                    <div className="flex justify-between mb-4 items-center"><h3 className="font-bold uppercase text-sm text-slate-900 dark:text-white">База Знаний</h3><Button onClick={addMat} className="!py-1 !px-3 !text-[10px]">+</Button></div>
+                    <div className="space-y-3">
+                        {materials.map(m => (
+                            <div key={m.id} className="bg-white dark:bg-[#14161B] p-4 rounded-xl border border-slate-200 dark:border-white/5 text-xs space-y-2 relative group">
+                                <div className="flex gap-2">
+                                    <input value={m.title} onChange={e => updateMat(m.id, 'title', e.target.value)} className="font-bold flex-1 bg-transparent border-b border-transparent focus:border-[#6C5DD3] outline-none text-slate-900 dark:text-white" placeholder="Title" />
+                                    <select value={m.type} onChange={e => updateMat(m.id, 'type', e.target.value)} className="bg-slate-100 dark:bg-white/5 rounded px-2 text-[10px] outline-none"><option value="LINK">Link</option><option value="PDF">PDF</option><option value="VIDEO">Video</option></select>
+                                    <button onClick={() => onUpdateMaterials(materials.filter(x => x.id !== m.id))} className="text-red-500 hover:bg-red-500/10 px-2 rounded">✕</button>
+                                </div>
+                                <input value={m.url} onChange={e => updateMat(m.id, 'url', e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 p-2 rounded text-slate-600 dark:text-white/60" placeholder="URL" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+              )}
 
               {/* Streams */}
-              <div>
-                  <div className="flex justify-between mb-4 items-center"><h3 className="font-bold uppercase text-sm text-slate-900 dark:text-white">Эфиры</h3><Button onClick={addStream} className="!py-1 !px-3 !text-[10px]">+</Button></div>
-                  <div className="space-y-3">
-                      {streams.map(s => (
-                          <div key={s.id} className="bg-white dark:bg-[#14161B] p-4 rounded-xl border border-slate-200 dark:border-white/5 text-xs space-y-2">
-                              <div className="flex gap-2">
-                                  <input value={s.title} onChange={e => updateStream(s.id, 'title', e.target.value)} className="font-bold flex-1 bg-transparent border-b border-transparent focus:border-[#6C5DD3] outline-none text-slate-900 dark:text-white" />
-                                  <select value={s.status} onChange={e => updateStream(s.id, 'status', e.target.value)} className="bg-slate-100 dark:bg-white/5 rounded px-2 text-[10px] outline-none"><option value="UPCOMING">Fut</option><option value="LIVE">Live</option><option value="PAST">Rec</option></select>
-                                  <button onClick={() => onUpdateStreams(streams.filter(x => x.id !== s.id))} className="text-red-500 hover:bg-red-500/10 px-2 rounded">✕</button>
-                              </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <input type="datetime-local" value={s.date.substring(0, 16)} onChange={e => updateStream(s.id, 'date', new Date(e.target.value).toISOString())} className="bg-slate-50 dark:bg-white/5 p-2 rounded" />
-                                <input value={s.youtubeUrl} onChange={e => updateStream(s.id, 'youtubeUrl', e.target.value)} className="bg-slate-50 dark:bg-white/5 p-2 rounded" placeholder="Stream URL" />
-                              </div>
-                          </div>
-                      ))}
-                  </div>
-              </div>
+              {activeSubTab === 'STREAMS' && (
+                <div>
+                    <div className="flex justify-between mb-4 items-center"><h3 className="font-bold uppercase text-sm text-slate-900 dark:text-white">Эфиры</h3><Button onClick={addStream} className="!py-1 !px-3 !text-[10px]">+</Button></div>
+                    <div className="space-y-3">
+                        {streams.map(s => (
+                            <div key={s.id} className="bg-white dark:bg-[#14161B] p-4 rounded-xl border border-slate-200 dark:border-white/5 text-xs space-y-2">
+                                <div className="flex gap-2">
+                                    <input value={s.title} onChange={e => updateStream(s.id, 'title', e.target.value)} className="font-bold flex-1 bg-transparent border-b border-transparent focus:border-[#6C5DD3] outline-none text-slate-900 dark:text-white" />
+                                    <select value={s.status} onChange={e => updateStream(s.id, 'status', e.target.value)} className="bg-slate-100 dark:bg-white/5 rounded px-2 text-[10px] outline-none"><option value="UPCOMING">Fut</option><option value="LIVE">Live</option><option value="PAST">Rec</option></select>
+                                    <button onClick={() => onUpdateStreams(streams.filter(x => x.id !== s.id))} className="text-red-500 hover:bg-red-500/10 px-2 rounded">✕</button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input type="datetime-local" value={s.date.substring(0, 16)} onChange={e => updateStream(s.id, 'date', new Date(e.target.value).toISOString())} className="bg-slate-50 dark:bg-white/5 p-2 rounded" />
+                                    <input value={s.youtubeUrl} onChange={e => updateStream(s.id, 'youtubeUrl', e.target.value)} className="bg-slate-50 dark:bg-white/5 p-2 rounded" placeholder="Stream URL" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+              )}
 
               {/* Scenarios */}
-              <div>
-                  <div className="flex justify-between mb-4 items-center"><h3 className="font-bold uppercase text-sm text-slate-900 dark:text-white">Арена</h3><Button onClick={addScen} className="!py-1 !px-3 !text-[10px]">+</Button></div>
-                  <div className="space-y-3">
-                      {scenarios.map(s => (
-                          <div key={s.id} className="bg-white dark:bg-[#14161B] p-4 rounded-xl border border-slate-200 dark:border-white/5 text-xs space-y-2">
-                              <div className="flex gap-2">
-                                  <input value={s.title} onChange={e => updateScen(s.id, 'title', e.target.value)} className="font-bold flex-1 bg-transparent border-b border-transparent focus:border-[#6C5DD3] outline-none text-slate-900 dark:text-white" />
-                                  <select value={s.difficulty} onChange={e => updateScen(s.id, 'difficulty', e.target.value)} className="bg-slate-100 dark:bg-white/5 rounded px-2 text-[10px] outline-none"><option value="Easy">Ez</option><option value="Medium">Mid</option><option value="Hard">Hard</option></select>
-                                  <button onClick={() => onUpdateScenarios(scenarios.filter(x => x.id !== s.id))} className="text-red-500 hover:bg-red-500/10 px-2 rounded">✕</button>
-                              </div>
-                              <input value={s.clientRole} onChange={e => updateScen(s.id, 'clientRole', e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 p-2 rounded mb-1" placeholder="Роль клиента" />
-                              <textarea value={s.objective} onChange={e => updateScen(s.id, 'objective', e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 p-2 rounded h-16 resize-none" placeholder="Цель" />
-                          </div>
-                      ))}
-                  </div>
-              </div>
+              {activeSubTab === 'ARENA' && (
+                <div>
+                    <div className="flex justify-between mb-4 items-center"><h3 className="font-bold uppercase text-sm text-slate-900 dark:text-white">Арена</h3><Button onClick={addScen} className="!py-1 !px-3 !text-[10px]">+</Button></div>
+                    <div className="space-y-3">
+                        {scenarios.map(s => (
+                            <div key={s.id} className="bg-white dark:bg-[#14161B] p-4 rounded-xl border border-slate-200 dark:border-white/5 text-xs space-y-2">
+                                <div className="flex gap-2">
+                                    <input value={s.title} onChange={e => updateScen(s.id, 'title', e.target.value)} className="font-bold flex-1 bg-transparent border-b border-transparent focus:border-[#6C5DD3] outline-none text-slate-900 dark:text-white" />
+                                    <select value={s.difficulty} onChange={e => updateScen(s.id, 'difficulty', e.target.value)} className="bg-slate-100 dark:bg-white/5 rounded px-2 text-[10px] outline-none"><option value="Easy">Ez</option><option value="Medium">Mid</option><option value="Hard">Hard</option></select>
+                                    <button onClick={() => onUpdateScenarios(scenarios.filter(x => x.id !== s.id))} className="text-red-500 hover:bg-red-500/10 px-2 rounded">✕</button>
+                                </div>
+                                <input value={s.clientRole} onChange={e => updateScen(s.id, 'clientRole', e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 p-2 rounded mb-1" placeholder="Роль клиента" />
+                                <textarea value={s.objective} onChange={e => updateScen(s.id, 'objective', e.target.value)} className="w-full bg-slate-50 dark:bg-white/5 p-2 rounded h-16 resize-none" placeholder="Цель" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+              )}
           </div>
       );
   };
@@ -424,13 +426,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           setNotifMsg('');
       };
 
+      const safeNotifications = Array.isArray(notifications) ? notifications : [];
+
       return (
           <div className="space-y-8 pb-20 animate-fade-in">
               <div className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5 space-y-4">
                   <h3 className="font-black text-slate-900 dark:text-white uppercase">Отправить оповещение</h3>
                   <input value={notifTitle} onChange={e => setNotifTitle(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 p-3 rounded-xl text-sm font-bold border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white outline-none focus:border-[#6C5DD3]" placeholder="Заголовок" />
                   <textarea value={notifMsg} onChange={e => setNotifMsg(e.target.value)} className="w-full bg-slate-50 dark:bg-black/20 p-3 rounded-xl text-sm border border-slate-200 dark:border-white/10 h-24 resize-none text-slate-900 dark:text-white outline-none focus:border-[#6C5DD3]" placeholder="Сообщение для всех..." />
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                       {['INFO', 'SUCCESS', 'WARNING', 'ALERT'].map(t => (
                           <button key={t} onClick={() => setNotifType(t as any)} className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase border transition-colors ${notifType === t ? 'bg-[#6C5DD3] text-white border-[#6C5DD3]' : 'border-slate-200 dark:border-white/10 text-slate-500'}`}>{t}</button>
                       ))}
@@ -440,11 +444,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
               <div className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5 space-y-4">
                   <div className="flex justify-between items-center">
-                      <h3 className="font-black text-slate-900 dark:text-white uppercase">История ({notifications.length})</h3>
+                      <h3 className="font-black text-slate-900 dark:text-white uppercase">История ({safeNotifications.length})</h3>
                       <button onClick={onClearNotifications} className="text-red-500 text-[10px] font-bold uppercase hover:underline">Очистить</button>
                   </div>
                   <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                      {notifications.map(n => (
+                      {safeNotifications.map(n => (
                           <div key={n.id} className="p-2 border-l-2 border-slate-300 dark:border-white/20 pl-3">
                               <div className="flex justify-between">
                                 <span className="text-[10px] font-bold text-slate-500">{new Date(n.date).toLocaleDateString()}</span>
@@ -474,73 +478,212 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const renderOverview = () => {
-    const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0);
     return (
     <div className="space-y-6 animate-fade-in">
-        <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5">
-                <div className="text-[#6C5DD3] text-2xl mb-2">👥</div>
-                <h3 className="text-3xl font-black text-slate-900 dark:text-white">{users.length}</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Бойцов</p>
-            </div>
-            <div className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5">
-                <div className="text-[#6C5DD3] text-2xl mb-2">📦</div>
-                <h3 className="text-3xl font-black text-slate-900 dark:text-white">{modules.length}</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Модулей</p>
-            </div>
-            <div className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5">
-                <div className="text-[#6C5DD3] text-2xl mb-2">📅</div>
-                <h3 className="text-3xl font-black text-slate-900 dark:text-white">{events.length}</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Событий</p>
-            </div>
-            <div className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5">
-                <div className="text-[#6C5DD3] text-2xl mb-2">📹</div>
-                <h3 className="text-3xl font-black text-slate-900 dark:text-white">{streams.length}</h3>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Эфиров</p>
-            </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+                { icon: '👥', val: users.length, label: 'Бойцов' },
+                { icon: '📦', val: modules.length, label: 'Модулей' },
+                { icon: '📅', val: events.length, label: 'Событий' },
+                { icon: '📹', val: streams.length, label: 'Эфиров' }
+            ].map((stat, i) => (
+                <div key={i} className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5">
+                    <div className="text-[#6C5DD3] text-2xl mb-2">{stat.icon}</div>
+                    <h3 className="text-3xl font-black text-slate-900 dark:text-white">{stat.val}</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                </div>
+            ))}
+        </div>
+        
+        <div className="bg-[#6C5DD3] text-white p-6 rounded-[2.5rem] relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+            <h3 className="text-xl font-black uppercase relative z-10">Neural Core Active</h3>
+            <p className="text-white/70 text-xs font-medium relative z-10 mt-1 max-w-xs">
+                AI Agent is monitoring system health. Errors: {notifications.filter(n => n.type === 'ALERT').length}
+            </p>
         </div>
     </div>
   )};
 
-  // --- NEW RENDER METHODS FOR MISSING TABS ---
+  // --- NEURAL CORE (MODEL SELECTION) ---
 
-  const renderNeuralCore = () => (
-      <div className="space-y-4 animate-fade-in pb-20">
-          <div className="bg-[#14161B] p-6 rounded-[2rem] border border-[#6C5DD3]/20 text-center relative overflow-hidden">
+  const renderNeuralCore = () => {
+      const providers: {id: AIProviderId, name: string, icon: string}[] = [
+          { id: 'GOOGLE_GEMINI', name: 'Google Gemini', icon: '💎' },
+          { id: 'OPENAI_GPT4', name: 'OpenAI GPT-4', icon: '🤖' },
+          { id: 'ANTHROPIC_CLAUDE', name: 'Anthropic Claude', icon: '🧠' },
+          { id: 'GROQ', name: 'Groq (Llama 3)', icon: '⚡' },
+          { id: 'OPENROUTER', name: 'OpenRouter', icon: '🌐' },
+      ];
+
+      const updateAIConfig = (key: string, value: any) => {
+          onUpdateConfig({
+              ...config,
+              aiConfig: {
+                  ...config.aiConfig,
+                  [key]: value
+              }
+          });
+      };
+
+      const updateKey = (provider: string, key: string) => {
+          onUpdateConfig({
+              ...config,
+              aiConfig: {
+                  ...config.aiConfig,
+                  apiKeys: {
+                      ...config.aiConfig.apiKeys,
+                      [provider.toLowerCase().split('_')[0]]: key // simplistic mapping, better to use strict keys
+                  }
+              }
+          });
+      };
+      
+      // Strict mapping for keys based on AIConfig interface
+      const setKey = (field: 'google' | 'openai' | 'anthropic' | 'groq' | 'openrouter', val: string) => {
+           onUpdateConfig({
+              ...config,
+              aiConfig: {
+                  ...config.aiConfig,
+                  apiKeys: { ...config.aiConfig.apiKeys, [field]: val }
+              }
+          });
+      };
+
+      return (
+      <div className="space-y-6 animate-fade-in pb-20">
+          <div className="bg-[#14161B] p-6 rounded-[2rem] border border-[#6C5DD3]/20 relative overflow-hidden">
               <div className="absolute inset-0 bg-[#6C5DD3]/5 animate-pulse"></div>
-              <h2 className="text-2xl font-black text-white relative z-10">AI CORE STATUS</h2>
-              <div className="mt-4 flex justify-center gap-4 relative z-10">
-                  <div className="text-center">
-                      <div className="w-16 h-16 rounded-full border-4 border-green-500 flex items-center justify-center text-xl bg-black/50 mx-auto mb-2">ON</div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400">System</span>
+              <div className="flex justify-between items-start relative z-10">
+                  <div>
+                      <h2 className="text-2xl font-black text-white">AI NEURAL CORE</h2>
+                      <p className="text-xs text-slate-400 mt-1">Центр управления языковыми моделями.</p>
                   </div>
-                  <div className="text-center">
-                      <div className="w-16 h-16 rounded-full border-4 border-[#6C5DD3] flex items-center justify-center text-xl bg-black/50 mx-auto mb-2">98%</div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400">Health</span>
+                  <div className="px-3 py-1 bg-[#6C5DD3] rounded-lg text-white text-[10px] font-black uppercase tracking-widest">
+                      {config.aiConfig.activeProvider}
                   </div>
               </div>
-              <p className="mt-4 text-xs text-slate-400 max-w-xs mx-auto">Автономный агент (SystemHealthAgent) активен и мониторит логи ошибок каждые {config.systemAgent?.monitoringInterval / 1000 || 30} сек.</p>
           </div>
           
-          <div className="bg-[#14161B] p-5 rounded-[2rem] border border-white/5">
-              <h3 className="font-bold text-white mb-4">Настройки ИИ</h3>
-              <div className="space-y-3">
-                  <div className="flex justify-between items-center bg-white/5 p-3 rounded-xl">
-                      <span className="text-xs text-slate-300">Провайдер</span>
-                      <span className="text-xs font-bold text-[#6C5DD3]">{config.aiConfig?.activeProvider || 'GEMINI'}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Provider Selection */}
+              <div className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5">
+                  <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase text-xs tracking-widest">Выбор Модели</h3>
+                  <div className="space-y-2">
+                      {providers.map(p => (
+                          <button
+                              key={p.id}
+                              onClick={() => updateAIConfig('activeProvider', p.id)}
+                              className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+                                  config.aiConfig.activeProvider === p.id 
+                                  ? 'bg-[#6C5DD3]/10 border-[#6C5DD3] text-[#6C5DD3]' 
+                                  : 'bg-transparent border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5'
+                              }`}
+                          >
+                              <div className="flex items-center gap-3">
+                                  <span className="text-xl">{p.icon}</span>
+                                  <span className="text-xs font-bold uppercase">{p.name}</span>
+                              </div>
+                              {config.aiConfig.activeProvider === p.id && <div className="w-2 h-2 rounded-full bg-[#6C5DD3]"></div>}
+                          </button>
+                      ))}
                   </div>
-                  <div className="flex justify-between items-center bg-white/5 p-3 rounded-xl">
-                      <span className="text-xs text-slate-300">Модель</span>
-                      <span className="text-xs font-bold text-white">{config.integrations?.aiModelVersion || 'flash-preview'}</span>
+              </div>
+
+              {/* API Keys */}
+              <div className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5">
+                  <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase text-xs tracking-widest">API Ключи</h3>
+                  <div className="space-y-3">
+                      {config.aiConfig.activeProvider === 'GOOGLE_GEMINI' && (
+                          <div>
+                              <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">Google AI Key</label>
+                              <input 
+                                type="password" 
+                                value={config.aiConfig.apiKeys.google || ''} 
+                                onChange={e => setKey('google', e.target.value)}
+                                className="w-full bg-slate-100 dark:bg-black/20 p-3 rounded-xl text-xs font-mono outline-none border border-transparent focus:border-[#6C5DD3]"
+                                placeholder="AIza..."
+                              />
+                          </div>
+                      )}
+                      {config.aiConfig.activeProvider === 'OPENAI_GPT4' && (
+                          <div>
+                              <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">OpenAI Key</label>
+                              <input 
+                                type="password" 
+                                value={config.aiConfig.apiKeys.openai || ''} 
+                                onChange={e => setKey('openai', e.target.value)}
+                                className="w-full bg-slate-100 dark:bg-black/20 p-3 rounded-xl text-xs font-mono outline-none border border-transparent focus:border-[#6C5DD3]"
+                                placeholder="sk-..."
+                              />
+                          </div>
+                      )}
+                      {config.aiConfig.activeProvider === 'ANTHROPIC_CLAUDE' && (
+                          <div>
+                              <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">Anthropic Key</label>
+                              <input 
+                                type="password" 
+                                value={config.aiConfig.apiKeys.anthropic || ''} 
+                                onChange={e => setKey('anthropic', e.target.value)}
+                                className="w-full bg-slate-100 dark:bg-black/20 p-3 rounded-xl text-xs font-mono outline-none border border-transparent focus:border-[#6C5DD3]"
+                                placeholder="sk-ant..."
+                              />
+                          </div>
+                      )}
+                      {config.aiConfig.activeProvider === 'GROQ' && (
+                          <div>
+                              <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">Groq Key</label>
+                              <input 
+                                type="password" 
+                                value={config.aiConfig.apiKeys.groq || ''} 
+                                onChange={e => setKey('groq', e.target.value)}
+                                className="w-full bg-slate-100 dark:bg-black/20 p-3 rounded-xl text-xs font-mono outline-none border border-transparent focus:border-[#6C5DD3]"
+                                placeholder="gsk_..."
+                              />
+                          </div>
+                      )}
+                      {config.aiConfig.activeProvider === 'OPENROUTER' && (
+                          <div>
+                              <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">OpenRouter Key</label>
+                              <input 
+                                type="password" 
+                                value={config.aiConfig.apiKeys.openrouter || ''} 
+                                onChange={e => setKey('openrouter', e.target.value)}
+                                className="w-full bg-slate-100 dark:bg-black/20 p-3 rounded-xl text-xs font-mono outline-none border border-transparent focus:border-[#6C5DD3]"
+                                placeholder="sk-or..."
+                              />
+                          </div>
+                      )}
                   </div>
-                  <div className="flex justify-between items-center bg-white/5 p-3 rounded-xl">
-                      <span className="text-xs text-slate-300">Авто-фикс ошибок</span>
-                      <span className={`text-xs font-bold ${config.systemAgent?.autoFix ? 'text-green-500' : 'text-red-500'}`}>{config.systemAgent?.autoFix ? 'ENABLED' : 'DISABLED'}</span>
+              </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#14161B] p-5 rounded-[2rem] border border-slate-200 dark:border-white/5">
+              <h3 className="font-bold text-slate-900 dark:text-white mb-4 uppercase text-xs tracking-widest">Model Overrides (Advanced)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                      <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">Chat Model ID</label>
+                      <input 
+                        value={config.aiConfig.modelOverrides.chat || ''} 
+                        onChange={e => onUpdateConfig({...config, aiConfig: {...config.aiConfig, modelOverrides: {...config.aiConfig.modelOverrides, chat: e.target.value}}})}
+                        className="w-full bg-slate-100 dark:bg-black/20 p-3 rounded-xl text-xs font-mono outline-none border border-transparent focus:border-[#6C5DD3]"
+                        placeholder="e.g. gpt-4o, claude-3-opus"
+                      />
+                  </div>
+                  <div>
+                      <label className="text-[9px] font-bold uppercase text-slate-400 block mb-1">Vision Model ID</label>
+                      <input 
+                        value={config.aiConfig.modelOverrides.vision || ''} 
+                        onChange={e => onUpdateConfig({...config, aiConfig: {...config.aiConfig, modelOverrides: {...config.aiConfig.modelOverrides, vision: e.target.value}}})}
+                        className="w-full bg-slate-100 dark:bg-black/20 p-3 rounded-xl text-xs font-mono outline-none border border-transparent focus:border-[#6C5DD3]"
+                        placeholder="e.g. gpt-4-vision"
+                      />
                   </div>
               </div>
           </div>
       </div>
-  );
+      );
+  };
 
   const renderDatabase = () => (
       <div className="space-y-4 animate-fade-in pb-20">

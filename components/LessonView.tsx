@@ -23,7 +23,7 @@ interface LessonViewProps {
 }
 
 export const LessonView: React.FC<LessonViewProps> = ({ 
-  lesson, 
+  lesson: propLesson, 
   isCompleted, 
   onComplete, 
   onBack, 
@@ -32,6 +32,12 @@ export const LessonView: React.FC<LessonViewProps> = ({
   onUpdateUser,
   onUpdateLesson
 }) => {
+  // Override description for lesson l1-2 as per specific content requirement
+  const lesson = { ...propLesson };
+  if (lesson.id === 'l1-2') {
+      lesson.description = 'Кодекс Воина Продаж: Честь, дисциплина, результат. Изучи кодекс, отделяющий профессионала от рыночного торговца.';
+  }
+
   const [inputText, setInputText] = useState('');
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -62,7 +68,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
           homeworkTask: lesson.homeworkTask,
           aiGradingInstruction: lesson.aiGradingInstruction
       });
-  }, [lesson]);
+  }, [lesson.id, lesson.description, lesson.homeworkTask, lesson.aiGradingInstruction]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -173,7 +179,34 @@ export const LessonView: React.FC<LessonViewProps> = ({
                     <h3 className="text-white font-black uppercase text-sm">Редактирование Урока</h3>
                     <button onClick={handleSaveEdit} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase transition-colors">Сохранить</button>
                 </div>
-                {/* Inputs ... (same as before) */}
+                
+                <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Описание (Подзаголовок)</label>
+                    <input 
+                        value={editData.description}
+                        onChange={(e) => setEditData({...editData, description: e.target.value})}
+                        className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm outline-none focus:border-[#6C5DD3]"
+                    />
+                </div>
+
+                <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Задание (Homework Task)</label>
+                    <textarea 
+                        value={editData.homeworkTask}
+                        onChange={(e) => setEditData({...editData, homeworkTask: e.target.value})}
+                        className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm outline-none focus:border-[#6C5DD3] h-24 resize-none"
+                    />
+                </div>
+
+                <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Инструкция для AI (Grading)</label>
+                    <textarea 
+                        value={editData.aiGradingInstruction}
+                        onChange={(e) => setEditData({...editData, aiGradingInstruction: e.target.value})}
+                        className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm outline-none focus:border-[#6C5DD3] h-32 resize-none font-mono text-xs"
+                        placeholder="Критерии проверки..."
+                    />
+                </div>
             </div>
         )}
 
