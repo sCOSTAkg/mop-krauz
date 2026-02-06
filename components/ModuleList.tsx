@@ -12,8 +12,18 @@ interface ModuleListProps {
 
 export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, onSelectLesson }) => {
   const [shakingId, setShakingId] = useState<string | null>(null);
+  const isAuthenticated = userProgress.isAuthenticated;
 
   const handleModuleClick = (module: Module, isLocked: boolean) => {
+    // If user is not authenticated, EVERYTHING is locked
+    if (!isAuthenticated) {
+        setShakingId(module.id);
+        telegram.haptic('error');
+        telegram.showAlert('Доступ закрыт. Пожалуйста, авторизуйтесь.', 'Security');
+        setTimeout(() => setShakingId(null), 400);
+        return;
+    }
+
     if (isLocked) {
         setShakingId(module.id);
         telegram.haptic('error');
@@ -29,7 +39,10 @@ export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, o
   return (
     <div className="grid grid-cols-1 gap-3 pb-24 sm:grid-cols-2 lg:grid-cols-3">
         {modules.map((module) => {
-            const isLocked = userProgress.level < module.minLevel;
+            const isLevelLocked = userProgress.level < module.minLevel;
+            // Locked if level is too low OR if not authenticated
+            const isLocked = isLevelLocked || !isAuthenticated;
+            
             const completedCount = module.lessons.filter(l => userProgress.completedLessonIds.includes(l.id)).length;
             const totalCount = module.lessons.length;
             const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -73,9 +86,16 @@ export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, o
             
             // Dynamic classes
             const baseClasses = "relative w-full rounded-[1.25rem] overflow-hidden transition-all duration-300 border flex flex-col justify-between group active:scale-[0.98] backdrop-blur-md shadow-lg";
-            const stateClasses = isLocked 
-                ? 'opacity-80 bg-[#121418] border-white/5' 
-                : `bg-gradient-to-br ${style.bg} ${style.border} ${style.glow} hover:-translate-y-1`;
+            
+            // If not authenticated, force a specific "Security Lock" look
+            let stateClasses = '';
+            if (!isAuthenticated) {
+                stateClasses = 'opacity-70 bg-[#121418] border-white/5 grayscale';
+            } else if (isLevelLocked) {
+                stateClasses = 'opacity-80 bg-[#121418] border-white/5';
+            } else {
+                stateClasses = `bg-gradient-to-br ${style.bg} ${style.border} ${style.glow} hover:-translate-y-1`;
+            }
 
             return (
                 <div 
@@ -86,6 +106,16 @@ export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, o
                     {/* Locked Overlay / Pattern */}
                     {isLocked && <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.2)_10px,rgba(0,0,0,0.2)_20px)] pointer-events-none"></div>}
                     {!isLocked && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.07] pointer-events-none"></div>}
+                    
+                    {/* Unauth Security Overlay */}
+                    {!isAuthenticated && (
+                        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                            <div className="bg-black/80 backdrop-blur-sm border border-white/10 rounded-xl px-4 py-2 flex items-center gap-2">
+                                <span className="text-lg">🔒</span>
+                                <span className="text-[9px] font-black uppercase text-white tracking-widest">Locked</span>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="p-4 flex flex-col h-full relative z-10">
                         
@@ -152,7 +182,7 @@ export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, o
                              ) : (
                                  <div className="pt-2 border-t border-white/5">
                                      <p className="text-[9px] font-bold text-white/20 uppercase tracking-wider text-center">
-                                         Доступ с {module.minLevel} уровня
+                                         {isAuthenticated ? `Доступ с ${module.minLevel} уровня` : 'Авторизуйтесь'}
                                      </p>
                                  </div>
                              )}

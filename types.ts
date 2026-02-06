@@ -218,6 +218,8 @@ export interface AppConfig {
   appDescription: string;
   primaryColor: string;
   systemInstruction: string;
+  welcomeVideoUrl?: string; // NEW
+  welcomeMessage?: string; // NEW
   integrations: AppIntegrations;
   features: AppFeatures;
   aiConfig: AIConfig;

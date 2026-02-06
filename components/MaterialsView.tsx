@@ -1,13 +1,25 @@
 
 import React from 'react';
-import { Material } from '../types';
+import { Material, UserProgress } from '../types';
+import { telegram } from '../services/telegramService';
 
 interface MaterialsViewProps {
   materials: Material[];
   onBack: () => void;
+  userProgress: UserProgress; // Added prop
 }
 
-export const MaterialsView: React.FC<MaterialsViewProps> = ({ materials }) => {
+export const MaterialsView: React.FC<MaterialsViewProps> = ({ materials, userProgress }) => {
+  const isAuthenticated = userProgress.isAuthenticated;
+
+  const handleMaterialClick = (e: React.MouseEvent, mat: Material) => {
+      if (!isAuthenticated) {
+          e.preventDefault();
+          telegram.haptic('error');
+          telegram.showAlert('Материалы доступны только авторизованным бойцам.', 'Доступ закрыт');
+      }
+  };
+
   return (
     <div className="px-6 pt-10 pb-32 max-w-2xl mx-auto space-y-8 animate-fade-in">
           <div>
@@ -19,12 +31,22 @@ export const MaterialsView: React.FC<MaterialsViewProps> = ({ materials }) => {
               {materials.map((mat, i) => (
                   <a 
                     key={mat.id} 
-                    href={mat.url}
-                    target="_blank"
+                    href={isAuthenticated ? mat.url : '#'}
+                    onClick={(e) => handleMaterialClick(e, mat)}
+                    target={isAuthenticated ? "_blank" : "_self"}
                     rel="noreferrer"
-                    className="bg-surface rounded-[2.5rem] p-6 border border-border-color flex items-center gap-5 group transition-all active:scale-[0.98] shadow-sm animate-slide-up"
+                    className={`
+                        bg-surface rounded-[2.5rem] p-6 border border-border-color flex items-center gap-5 group transition-all shadow-sm animate-slide-up relative overflow-hidden
+                        ${!isAuthenticated ? 'opacity-60 grayscale cursor-not-allowed' : 'active:scale-[0.98]'}
+                    `}
                     style={{ animationDelay: `${i * 0.1}s` }}
                   >
+                      {!isAuthenticated && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/10 z-20 backdrop-blur-[2px]">
+                              <span className="text-xl">🔒</span>
+                          </div>
+                      )}
+                      
                       <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 relative overflow-hidden bg-body border border-border-color`}>
                           <div className={`absolute inset-0 opacity-10 ${mat.type === 'PDF' ? 'bg-red-500' : mat.type === 'VIDEO' ? 'bg-blue-500' : 'bg-green-500'}`}></div>
                           <span className="relative z-10">{mat.type === 'PDF' ? '📄' : mat.type === 'VIDEO' ? '🎥' : '🔗'}</span>

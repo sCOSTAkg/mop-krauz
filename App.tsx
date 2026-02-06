@@ -16,7 +16,6 @@ import { MaterialsView } from './components/MaterialsView';
 import { StreamsView } from './components/StreamsView';
 import { HabitTracker } from './components/HabitTracker';
 import { ModuleList } from './components/ModuleList';
-import { SystemHealthAgent } from './components/SystemHealthAgent';
 import { Backend } from './services/backendService';
 import { XPService } from './services/xpService';
 
@@ -25,6 +24,8 @@ const DEFAULT_CONFIG: AppConfig = {
   appDescription: 'Elite Sales Academy',
   primaryColor: '#6C5DD3',
   systemInstruction: `Ты — Командир элитного отряда продаж "300 Спартанцев". Твоя задача: сделать из новобранца настоящую машину продаж. СТИЛЬ: Жесткий, военный, вдохновляющий.`,
+  welcomeVideoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Default welcome video
+  welcomeMessage: 'Добро пожаловать в Спарту. Здесь куется характер.',
   integrations: { 
       telegramBotToken: '', 
       googleDriveFolderId: '', 
@@ -42,11 +43,11 @@ const DEFAULT_CONFIG: AppConfig = {
       modelOverrides: {}
   },
   systemAgent: {
-      enabled: true,
-      autoFix: true,
+      enabled: false,
+      autoFix: false,
       monitoringInterval: 20000,
-      sensitivity: 'HIGH',
-      autonomyLevel: 'FULL_AUTO'
+      sensitivity: 'LOW',
+      autonomyLevel: 'PASSIVE'
   }
 };
 
@@ -311,16 +312,6 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-[100dvh] bg-body text-text-primary transition-colors duration-300 overflow-hidden">
       
-      <SystemHealthAgent 
-          config={appConfig.systemAgent} 
-          user={userProgress}
-          appConfig={appConfig}
-          modules={modules}
-          onUpdateConfig={handleUpdateConfig}
-          onUpdateModules={handleUpdateModules}
-          onSendNotification={handleSendBroadcast}
-      />
-
       <div className="fixed top-[var(--safe-top)] left-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
         {toasts.map(t => <Toast key={t.id} toast={t} onRemove={removeToast} onClick={() => handleNavigate(t.link)} />)}
       </div>
@@ -355,6 +346,7 @@ const App: React.FC = () => {
                    onUpdateUser={handleUpdateUser}
                    allUsers={allUsers}
                    notifications={notifications}
+                   appConfig={appConfig} // Pass config for welcome video
                  />
               )}
               
@@ -383,7 +375,11 @@ const App: React.FC = () => {
               )}
 
               {activeTab === Tab.MATERIALS && (
-                  <MaterialsView materials={materials} onBack={() => setActiveTab(Tab.HOME)} />
+                  <MaterialsView 
+                    materials={materials} 
+                    onBack={() => setActiveTab(Tab.HOME)} 
+                    userProgress={userProgress} 
+                  />
               )}
 
               {activeTab === Tab.STREAMS && (
