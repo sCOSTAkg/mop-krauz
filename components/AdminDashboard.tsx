@@ -42,10 +42,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [editingLesson, setEditingLesson] = useState<{moduleId: string, lesson: Lesson} | null>(null);
 
-  // --- LOCAL STATE FOR NOTIFICATIONS (Moved from renderSettings to fix Hook error #310) ---
+  // --- LOCAL STATE FOR NOTIFICATIONS ---
   const [notifTitle, setNotifTitle] = useState('');
   const [notifMsg, setNotifMsg] = useState('');
   const [notifType, setNotifType] = useState<AppNotification['type']>('INFO');
+
+  // --- HELPER FOR MARKDOWN EDITOR ---
+  const handleMarkdownInsert = (prefix: string, suffix: string, placeholder: string = 'text') => {
+      if (!editingLesson) return;
+      
+      const textarea = document.getElementById('markdown-editor-area') as HTMLTextAreaElement;
+      if (!textarea) return;
+
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = editingLesson.lesson.content;
+      
+      const before = text.substring(0, start);
+      const selection = text.substring(start, end) || placeholder;
+      const after = text.substring(end, text.length);
+
+      const newText = `${before}${prefix}${selection}${suffix}${after}`;
+      
+      setEditingLesson({
+          ...editingLesson,
+          lesson: { ...editingLesson.lesson, content: newText }
+      });
+      
+      // Restore focus (timeout needed for React render cycle)
+      setTimeout(() => {
+          textarea.focus();
+          textarea.setSelectionRange(start + prefix.length, start + prefix.length + selection.length);
+      }, 0);
+  };
+
+  const handleImageInsert = () => {
+      const url = prompt('Введите URL изображения:', 'https://');
+      if (url) {
+          handleMarkdownInsert('![Alt text](', url + ')', '');
+      }
+  };
+
+  const handleLinkInsert = () => {
+      const url = prompt('Введите URL ссылки:', 'https://');
+      if (url) {
+          handleMarkdownInsert('[', `](${url})`, 'Текст ссылки');
+      }
+  };
 
   // --- USERS MANAGEMENT ---
   const renderUsers = () => {
@@ -218,10 +261,34 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               <label className="text-[10px] uppercase text-gray-500 font-bold">Видео URL</label>
                               <input value={editingLesson.lesson.videoUrl || ''} onChange={e => setEditingLesson({...editingLesson, lesson: {...editingLesson.lesson, videoUrl: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#6C5DD3]" placeholder="https://..." />
                           </div>
+                          
+                          {/* Rich Markdown Editor */}
                           <div>
-                              <label className="text-[10px] uppercase text-gray-500 font-bold">Контент (Markdown)</label>
-                              <textarea value={editingLesson.lesson.content} onChange={e => setEditingLesson({...editingLesson, lesson: {...editingLesson.lesson, content: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#6C5DD3] h-40 font-mono text-sm" />
+                              <label className="text-[10px] uppercase text-gray-500 font-bold mb-2 block">Контент (Markdown Editor)</label>
+                              
+                              {/* Toolbar */}
+                              <div className="flex gap-1 mb-2 overflow-x-auto pb-1">
+                                  <button onClick={() => handleMarkdownInsert('**', '**', 'bold')} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white font-bold min-w-[32px]" title="Bold">B</button>
+                                  <button onClick={() => handleMarkdownInsert('*', '*', 'italic')} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white italic min-w-[32px]" title="Italic">I</button>
+                                  <button onClick={() => handleMarkdownInsert('# ', '\n', 'Header 1')} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white font-bold min-w-[32px]" title="H1">H1</button>
+                                  <button onClick={() => handleMarkdownInsert('## ', '\n', 'Header 2')} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white font-bold min-w-[32px]" title="H2">H2</button>
+                                  <button onClick={() => handleMarkdownInsert('> ', '\n', 'Quote')} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white min-w-[32px]" title="Quote">❝</button>
+                                  <button onClick={() => handleMarkdownInsert('- ', '\n', 'List Item')} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white min-w-[32px]" title="List">≣</button>
+                                  <button onClick={handleLinkInsert} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white min-w-[32px]" title="Link">🔗</button>
+                                  <button onClick={handleImageInsert} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white min-w-[32px]" title="Image">🖼️</button>
+                                  <button onClick={() => handleMarkdownInsert('`', '`', 'code')} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white font-mono min-w-[32px]" title="Code">{`<>`}</button>
+                              </div>
+
+                              <textarea 
+                                id="markdown-editor-area"
+                                value={editingLesson.lesson.content} 
+                                onChange={e => setEditingLesson({...editingLesson, lesson: {...editingLesson.lesson, content: e.target.value}})} 
+                                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-[#6C5DD3] h-60 font-mono text-sm leading-relaxed" 
+                                placeholder="Пишите контент урока здесь..."
+                              />
+                              <p className="text-[9px] text-slate-500 mt-1">Поддерживает Markdown. Используйте панель выше для форматирования.</p>
                           </div>
+
                           <div>
                               <label className="text-[10px] uppercase text-gray-500 font-bold">Задание</label>
                               <textarea value={editingLesson.lesson.homeworkTask} onChange={e => setEditingLesson({...editingLesson, lesson: {...editingLesson.lesson, homeworkTask: e.target.value}})} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white outline-none focus:border-[#6C5DD3] h-20" />
