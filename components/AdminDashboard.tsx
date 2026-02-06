@@ -270,10 +270,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       telegram.haptic('medium');
   };
 
-  // Filter Users
+  const handleSaveLesson = () => {
+      if (!editingLessonState) return;
+      const updatedModules = modules.map(m => {
+          if (m.id === editingLessonState.moduleId) {
+              return {
+                  ...m,
+                  lessons: m.lessons.map(l => l.id === editingLessonState.lesson.id ? editingLessonState.lesson : l)
+              };
+          }
+          return m;
+      });
+      onUpdateModules(updatedModules);
+      setEditingLessonState(null);
+      telegram.haptic('success');
+      addToast('success', 'Урок сохранен');
+  };
+
+  // Filter Users (Fixed potential crash with undefined name/role)
   const filteredUsers = users.filter(u => 
-      u.name.toLowerCase().includes(userSearchTerm.toLowerCase()) || 
-      u.role.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+      (u.name || '').toLowerCase().includes(userSearchTerm.toLowerCase()) || 
+      (u.role || '').toLowerCase().includes(userSearchTerm.toLowerCase()) ||
       u.telegramUsername?.toLowerCase().includes(userSearchTerm.toLowerCase())
   );
 

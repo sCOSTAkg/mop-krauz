@@ -293,7 +293,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
 
            <div className="space-y-1">
                <label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Пароль</label>
-               <div className={`flex items-center bg-white dark:bg-[#1F2128] border ${errors.password ? 'border-red-500' : 'border-slate-200 dark:border-white/5 focus-within:border-[#6C5DD3]'} rounded-2xl px-4 transition-colors`}>
+               <div className={`flex items-center bg-white dark:bg-[#1F2128] border ${errors.password ? 'border-red-500' : 'border-slate-200 dark:border-white/5 focus:border-[#6C5DD3]'} rounded-2xl px-4 transition-colors`}>
                    <span className="text-slate-500">🔒</span>
                    <input 
                      type="password"
