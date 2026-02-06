@@ -279,6 +279,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 className="bg-transparent text-xs text-slate-500 w-full outline-none"
                                 placeholder="Краткое описание"
                             />
+                            
+                            {/* NEW: Media Fields */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 my-2">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase">Image URL</label>
+                                    <input 
+                                        value={mod.imageUrl || ''} 
+                                        onChange={(e) => updateModule(mod.id, 'imageUrl', e.target.value)}
+                                        className="w-full bg-slate-200 dark:bg-black/20 rounded-lg px-2 py-1.5 text-xs text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-[#6C5DD3]"
+                                        placeholder="https://..."
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase">Video URL</label>
+                                    <input 
+                                        value={mod.videoUrl || ''} 
+                                        onChange={(e) => updateModule(mod.id, 'videoUrl', e.target.value)}
+                                        className="w-full bg-slate-200 dark:bg-black/20 rounded-lg px-2 py-1.5 text-xs text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-[#6C5DD3]"
+                                        placeholder="https://..."
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase">PDF URL</label>
+                                    <input 
+                                        value={mod.pdfUrl || ''} 
+                                        onChange={(e) => updateModule(mod.id, 'pdfUrl', e.target.value)}
+                                        className="w-full bg-slate-200 dark:bg-black/20 rounded-lg px-2 py-1.5 text-xs text-slate-900 dark:text-white outline-none focus:ring-1 focus:ring-[#6C5DD3]"
+                                        placeholder="https://..."
+                                    />
+                                </div>
+                            </div>
+
                             <div className="flex flex-wrap justify-between items-center mt-2 gap-2">
                                 <div className="flex gap-2">
                                     <input 

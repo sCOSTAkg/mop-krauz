@@ -188,8 +188,8 @@ export const LessonView: React.FC<LessonViewProps> = ({
   return (
     <div className="flex flex-col min-h-screen pb-32 w-full animate-slide-in bg-body text-text-primary transition-colors duration-300">
       {/* HEADER - Glassmorphism */}
-      <div className="sticky top-0 z-40 px-4 md:px-6 pt-[calc(var(--safe-top)+10px)] pb-4 flex items-center justify-between bg-[#14161B]/80 backdrop-blur-xl border-b border-white/5 shadow-lg">
-        <button onClick={onBack} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-white/10 active:scale-95 transition-all">
+      <div className="sticky top-0 z-40 px-4 md:px-6 pt-[calc(var(--safe-top)+10px)] pb-4 flex items-center justify-between bg-body/80 backdrop-blur-xl border-b border-transparent shadow-sm">
+        <button onClick={onBack} className="w-10 h-10 rounded-full bg-surface border border-border-color flex items-center justify-center text-text-primary hover:bg-border-color active:scale-95 transition-all">
            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
            </svg>
@@ -197,11 +197,11 @@ export const LessonView: React.FC<LessonViewProps> = ({
         <div className="flex flex-col items-center">
              <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#6C5DD3] mb-0.5">Lesson Access</span>
              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white max-w-[200px] truncate">{lesson.title}</span>
+                <span className="text-xs font-bold text-text-primary max-w-[200px] truncate">{lesson.title}</span>
                 {isAdmin && (
                     <button 
                         onClick={() => setIsEditing(!isEditing)} 
-                        className={`w-5 h-5 flex items-center justify-center rounded bg-white/10 hover:bg-[#6C5DD3] transition-colors ${isEditing ? 'text-[#6C5DD3] bg-white/20' : 'text-slate-400'}`}
+                        className={`w-5 h-5 flex items-center justify-center rounded bg-surface hover:bg-[#6C5DD3] transition-colors ${isEditing ? 'text-[#6C5DD3] bg-white/20' : 'text-slate-400'}`}
                         title="Edit Lesson"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
@@ -220,6 +220,8 @@ export const LessonView: React.FC<LessonViewProps> = ({
         {/* EDIT MODE PANEL */}
         {isEditing && (
             <div className="bg-[#1F2128] p-5 rounded-[2rem] border border-[#6C5DD3]/30 mb-6 space-y-4 animate-fade-in shadow-xl">
+                {/* ... Edit Mode Inputs (Using simpler styles for admin) ... */}
+                {/* Reusing previous logic but ensuring it matches new types if any. Keeping existing block for brevity as UI focus is student facing */}
                 <div className="flex justify-between items-center mb-2">
                     <h3 className="text-white font-black uppercase text-sm">Редактирование Урока</h3>
                     <button onClick={handleSaveEdit} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase transition-colors">Сохранить</button>
@@ -316,7 +318,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
 
         {/* VIDEO PLAYER */}
         {hasVideo && (
-            <div className="relative mb-8 group animate-fade-in bg-black rounded-[2.5rem] overflow-hidden shadow-2xl aspect-video isolate ring-1 ring-white/10">
+            <div className="relative mb-8 group animate-fade-in bg-black rounded-[2.5rem] overflow-hidden shadow-2xl aspect-video isolate ring-1 ring-white/10 border border-white/5">
                 <div className="absolute inset-0 z-0">
                     <VideoPlayer 
                         className="react-player" 
@@ -342,7 +344,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
         )}
 
         {/* CONTENT CARD */}
-        <div className="bg-[#14161B] p-6 md:p-8 rounded-[2.5rem] border border-white/5 mb-8 relative overflow-hidden shadow-xl">
+        <div className="bg-surface p-6 md:p-8 rounded-[2.5rem] border border-border-color mb-8 relative overflow-hidden shadow-lg">
             <div className="flex items-center gap-3 mb-6">
                <span className="bg-[#6C5DD3]/10 text-[#6C5DD3] border border-[#6C5DD3]/20 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider">
                  +{lesson.xpReward} XP
@@ -352,15 +354,15 @@ export const LessonView: React.FC<LessonViewProps> = ({
                </span>}
             </div>
 
-            <h2 className="text-3xl font-black text-white mb-3 leading-tight tracking-tight">{lesson.title}</h2>
-            {lesson.description && <p className="text-sm font-medium text-slate-400 mb-8 border-l-2 border-[#6C5DD3] pl-4">{lesson.description}</p>}
+            <h2 className="text-3xl font-black text-text-primary mb-3 leading-tight tracking-tight">{lesson.title}</h2>
+            {lesson.description && <p className="text-sm font-medium text-text-secondary mb-8 border-l-2 border-[#6C5DD3] pl-4">{lesson.description}</p>}
             
-            <div className="markdown-content text-slate-300">
+            <div className="markdown-content text-text-secondary">
                 <ReactMarkdown
                     components={{
-                        h1: (props) => <h1 className="text-xl md:text-2xl font-black mt-8 mb-4 text-[#6C5DD3] leading-tight" {...props} />,
-                        h2: (props) => <h2 className="text-lg md:text-xl font-bold mt-6 mb-3 text-white border-l-4 border-[#6C5DD3] pl-3" {...props} />,
-                        h3: (props) => <h3 className="text-base md:text-lg font-bold mt-5 mb-2 text-white" {...props} />,
+                        h1: (props) => <h1 className="text-xl md:text-2xl font-black mt-8 mb-4 text-transparent bg-clip-text bg-gradient-to-r from-[#6C5DD3] to-[#8B7FD9] leading-tight" {...props} />,
+                        h2: (props) => <h2 className="text-lg md:text-xl font-bold mt-6 mb-3 text-text-primary border-l-4 border-[#6C5DD3] pl-3" {...props} />,
+                        h3: (props) => <h3 className="text-base md:text-lg font-bold mt-5 mb-2 text-text-primary" {...props} />,
                         p: (props) => <p className="mb-4 leading-relaxed font-medium text-sm md:text-base opacity-90" {...props} />,
                         ul: (props) => <ul className="list-disc pl-5 mb-6 space-y-2 marker:text-[#6C5DD3]" {...props} />,
                         ol: (props) => <ol className="list-decimal pl-5 mb-6 space-y-2 marker:text-[#6C5DD3] font-bold" {...props} />,
@@ -407,7 +409,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
                                             <span className="text-base">{icon}</span>
                                             <span>{title}</span>
                                         </div>
-                                        <div className="italic text-white font-medium text-sm leading-relaxed opacity-90">
+                                        <div className="italic text-text-primary font-medium text-sm leading-relaxed opacity-90">
                                             {props.children}
                                         </div>
                                     </div>
@@ -416,13 +418,13 @@ export const LessonView: React.FC<LessonViewProps> = ({
 
                             return (
                                 <div className="relative my-8 group pl-6 border-l-4 border-[#6C5DD3]/50">
-                                    <blockquote className="italic text-white font-medium text-base md:text-lg leading-relaxed opacity-90" {...props} />
+                                    <blockquote className="italic text-text-primary font-medium text-base md:text-lg leading-relaxed opacity-90" {...props} />
                                 </div>
                             );
                         },
                         code: (props) => <code className="bg-black/30 px-1.5 py-0.5 rounded text-xs font-mono text-[#6C5DD3] font-bold break-all border border-white/5" {...props} />,
                         a: (props) => <a className="text-[#6C5DD3] underline underline-offset-4 decoration-2 decoration-[#6C5DD3]/30 hover:decoration-[#6C5DD3] transition-all font-bold break-all" {...props} />,
-                        strong: (props) => <strong className="font-bold text-white" {...props} />,
+                        strong: (props) => <strong className="font-bold text-text-primary" {...props} />,
                     }}
                 >
                     {lesson.content}
@@ -431,9 +433,9 @@ export const LessonView: React.FC<LessonViewProps> = ({
         </div>
 
         {/* QUESTIONS TO HQ */}
-        <div className="bg-[#14161B] p-6 rounded-[2.5rem] border border-white/5 mb-8 relative overflow-hidden shadow-lg">
+        <div className="bg-surface p-6 rounded-[2.5rem] border border-border-color mb-8 relative overflow-hidden shadow-lg">
              <div className="flex justify-between items-center mb-4">
-                 <h3 className="text-white font-bold text-lg">Вопрос в Штаб</h3>
+                 <h3 className="text-text-primary font-bold text-lg">Вопрос в Штаб</h3>
                  <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg ${questionsRemaining > 0 ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
                      Лимит: {questionsRemaining}
                  </span>
@@ -444,7 +446,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
                     onChange={(e) => setQuestionText(e.target.value)}
                     placeholder="Ваш вопрос..."
                     disabled={questionsRemaining <= 0 || isAsking}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:border-[#6C5DD3] outline-none disabled:opacity-50"
+                    className="flex-1 bg-body border border-border-color rounded-2xl px-4 py-3 text-sm text-text-primary placeholder:text-text-secondary focus:border-[#6C5DD3] outline-none disabled:opacity-50 transition-colors"
                  />
                  <button 
                     onClick={handleAskQuestion}
@@ -458,7 +460,9 @@ export const LessonView: React.FC<LessonViewProps> = ({
 
         {/* HOMEWORK SECTION */}
         {!isCompleted ? (
-            <div className="relative rounded-[2.5rem] overflow-hidden shadow-2xl ring-1 ring-white/10 group bg-[#14161B]">
+            <div className="relative rounded-[2.5rem] overflow-hidden shadow-2xl group bg-[#16181D]">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#6C5DD3] to-[#FFAB7B]"></div>
+                
                 <div className="relative z-10 p-8 text-white">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="w-14 h-14 rounded-2xl bg-[#6C5DD3] flex items-center justify-center text-2xl shadow-lg shadow-[#6C5DD3]/30 text-white">
