@@ -1,10 +1,10 @@
 
-import { AppConfig, UserProgress, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification, NotebookEntry, Habit, Goal } from '../types';
+import { AppConfig, UserProgress, Module, Lesson, Material, Stream, CalendarEvent, ArenaScenario, AppNotification } from '../types';
 import { Logger } from './logger';
 import { Storage } from './storage';
 
 // Helper types matching your Airtable table names
-type TableName = 'Users' | 'Modules' | 'Materials' | 'Streams' | 'Events' | 'Scenarios' | 'Notifications' | 'Config' | 'Notebook' | 'Habits' | 'Goals';
+type TableName = 'Users' | 'Modules' | 'Lessons' | 'Materials' | 'Streams' | 'Events' | 'Scenarios' | 'Notifications' | 'Config' | 'Notebook' | 'Habits' | 'Goals';
 
 class AirtableService {
     
@@ -18,6 +18,7 @@ class AirtableService {
             tables: {
                 Users: integ?.airtableTableName || 'Users',
                 Modules: 'Modules',
+                Lessons: 'Lessons',
                 Materials: 'Materials',
                 Streams: 'Streams',
                 Events: 'Events',
@@ -46,19 +47,24 @@ class AirtableService {
 
         if (!pat || !baseId) return [];
 
-        const url = `https://api.airtable.com/v0/${baseId}/${actualTableName}`;
+        // Pagination loop to fetch all records
+        let allRecords: any[] = [];
+        let offset = '';
         
         try {
-            const response = await fetch(url, { headers: this.getHeaders(pat) });
-            if (!response.ok) {
-                if (response.status === 404) Logger.warn(`Airtable: Table '${actualTableName}' not found.`);
-                return [];
-            }
-            
-            const data = await response.json();
-            if (!data.records) return [];
+            do {
+                const url = `https://api.airtable.com/v0/${baseId}/${actualTableName}${offset ? `?offset=${offset}` : ''}`;
+                const response = await fetch(url, { headers: this.getHeaders(pat) });
+                if (!response.ok) {
+                    if (response.status === 404) Logger.warn(`Airtable: Table '${actualTableName}' not found.`);
+                    return [];
+                }
+                const data = await response.json();
+                if (data.records) allRecords = [...allRecords, ...data.records];
+                offset = data.offset;
+            } while (offset);
 
-            return data.records.map((r: any) => {
+            return allRecords.map((r: any) => {
                 try {
                     return mapper(r);
                 } catch (e) {
@@ -81,7 +87,6 @@ class AirtableService {
         const actualTableName = tables[tableName];
         
         try {
-            // 1. Find existing record
             const safeValue = String(searchValue).replace(/'/g, "\\'");
             const filter = encodeURIComponent(`{${searchField}} = '${safeValue}'`);
             const findUrl = `https://api.airtable.com/v0/${baseId}/${actualTableName}?filterByFormula=${filter}`;
@@ -107,7 +112,7 @@ class AirtableService {
         }
     }
 
-    // --- USER SYNC & SUB-COLLECTIONS ---
+    // --- USER SYNC ---
 
     private mapRecordToUser(record: any): UserProgress {
         const f = record.fields;
@@ -137,7 +142,6 @@ class AirtableService {
         if (!tgId) return localUser;
 
         try {
-            // 1. Fetch remote user
             const safeId = String(tgId).replace(/'/g, "\\'");
             const filter = encodeURIComponent(`{TelegramId} = '${safeId}'`);
             const url = `https://api.airtable.com/v0/${baseId}/${tables.Users}?filterByFormula=${filter}`;
@@ -146,7 +150,6 @@ class AirtableService {
             const data = await response.json();
             const remoteRecord = data.records?.[0];
 
-            // 2. Prepare Payload
             const { id, airtableRecordId, name, role, xp, level, telegramId, lastSyncTimestamp, ...rest } = localUser;
             const currentTimestamp = Date.now();
             
@@ -163,9 +166,7 @@ class AirtableService {
             let finalUser = localUser;
             let userRecordId = remoteRecord?.id;
 
-            // 3. Logic
             if (!remoteRecord) {
-                // New User
                 const createRes = await fetch(`https://api.airtable.com/v0/${baseId}/${tables.Users}`, {
                     method: 'POST',
                     headers: this.getHeaders(pat),
@@ -175,13 +176,11 @@ class AirtableService {
                 userRecordId = createData.id;
                 finalUser = { ...localUser, lastSyncTimestamp: currentTimestamp, airtableRecordId: userRecordId };
             } else {
-                // Existing User - Conflict Resolution
                 const remoteUser = this.mapRecordToUser(remoteRecord);
                 const localTime = localUser.lastSyncTimestamp || 0;
                 const remoteTime = remoteUser.lastSyncTimestamp || 0;
 
                 if (localTime > remoteTime + 2000) {
-                    // Local is newer -> Push to Cloud
                     await fetch(`https://api.airtable.com/v0/${baseId}/${tables.Users}/${remoteRecord.id}`, {
                         method: 'PATCH',
                         headers: this.getHeaders(pat),
@@ -189,7 +188,6 @@ class AirtableService {
                     });
                     finalUser = { ...localUser, lastSyncTimestamp: currentTimestamp, airtableRecordId: remoteRecord.id };
                 } else if (remoteTime > localTime) {
-                    // Remote is newer -> Pull from Cloud
                     Logger.info('Airtable: Pulled newer user data from cloud');
                     return remoteUser;
                 } else {
@@ -197,7 +195,6 @@ class AirtableService {
                 }
             }
 
-            // 4. Sync Sub-Collections (Notebook, Habits, Goals) in background
             if (userRecordId) {
                 this.syncUserDetails(finalUser, userRecordId);
             }
@@ -210,27 +207,17 @@ class AirtableService {
         }
     }
 
-    /**
-     * Syncs Notebook, Habits, and Goals to separate tables linked to the User.
-     * This is primarily for Admin visibility/Analytics.
-     */
     private async syncUserDetails(user: UserProgress, userRecordId: string) {
-        // We sync items individually. Note: This assumes simple upsert by ID.
-        // It does NOT handle deletions of items removed from the app (to keep logic simple and safe).
-        
-        // 1. Sync Notebook
         if (user.notebook && user.notebook.length > 0) {
             user.notebook.forEach(note => {
                 this.upsertRecord('Notebook', 'id', note.id, {
                     "Text": note.text,
                     "Type": note.type,
                     "Date": note.date,
-                    "User": [userRecordId] // Link to User
+                    "User": [userRecordId]
                 });
             });
         }
-
-        // 2. Sync Habits
         if (user.habits && user.habits.length > 0) {
             user.habits.forEach(habit => {
                 this.upsertRecord('Habits', 'id', habit.id, {
@@ -240,8 +227,6 @@ class AirtableService {
                 });
             });
         }
-
-        // 3. Sync Goals
         if (user.goals && user.goals.length > 0) {
             user.goals.forEach(goal => {
                 this.upsertRecord('Goals', 'id', goal.id, {
@@ -254,25 +239,121 @@ class AirtableService {
         }
     }
 
-    // --- CONTENT MAPPERS & SAVERS (Existing) ---
-    // ... (Previous implementation remains same for content)
-    
-    // MODULES
-    mapModule(record: any): Module {
-        const f = record.fields;
-        let lessons = [];
-        try { lessons = f.lessons ? JSON.parse(f.lessons) : []; } catch(e) { console.error('Bad lessons JSON', e); }
+    // --- CONTENT FETCHING ---
+
+    // 1. Fetch Lessons (Raw)
+    private async getLessons(): Promise<any[]> {
+        return this.fetchTable('Lessons', (r) => {
+            const f = r.fields;
+            return {
+                id: f.id || r.id,
+                title: f.title,
+                description: f.description,
+                content: f.content || '',
+                xpReward: f.xpReward || 50,
+                homeworkType: f.homeworkType || 'TEXT',
+                homeworkTask: f.homeworkTask || '',
+                aiGradingInstruction: f.aiGradingInstruction || '',
+                videoUrl: f.videoUrl,
+                moduleLink: f.Module // Array of Module Record IDs
+            };
+        });
+    }
+
+    // 2. Fetch Modules and join with Lessons
+    async getModulesWithLessons(): Promise<Module[]> {
+        const [modulesRaw, lessonsRaw] = await Promise.all([
+            this.fetchTable('Modules', (r) => {
+                const f = r.fields;
+                return {
+                    id: f.id || r.id,
+                    recordId: r.id,
+                    title: f.title,
+                    description: f.description,
+                    category: f.category,
+                    minLevel: f.minLevel || 1,
+                    imageUrl: f.imageUrl,
+                    videoUrl: f.videoUrl,
+                    lessons: [] // Placeholder
+                };
+            }),
+            this.getLessons()
+        ]);
+
+        // Join
+        return modulesRaw.map(mod => {
+            const modLessons = lessonsRaw.filter((l: any) => 
+                l.moduleLink && l.moduleLink.includes(mod.recordId)
+            );
+            
+            // Clean up internal field moduleLink
+            const cleanLessons = modLessons.map(({ moduleLink, ...rest }: any) => rest as Lesson);
+            
+            return { ...mod, lessons: cleanLessons };
+        });
+    }
+
+    // --- OTHER TABLES ---
+
+    async getMaterials() { return this.fetchTable('Materials', (r) => {
+        const f = r.fields;
         return {
-            id: f.id || record.id,
+            id: f.id || r.id,
             title: f.title,
             description: f.description,
-            category: f.category,
-            minLevel: f.minLevel,
-            imageUrl: f.imageUrl,
-            videoUrl: f.videoUrl,
-            lessons: lessons
-        };
-    }
+            type: f.type,
+            url: f.url
+        } as Material;
+    });}
+
+    async getStreams() { return this.fetchTable('Streams', (r) => {
+        const f = r.fields;
+        return {
+            id: f.id || r.id,
+            title: f.title,
+            date: f.date,
+            status: f.status,
+            youtubeUrl: f.youtubeUrl
+        } as Stream;
+    });}
+
+    async getEvents() { return this.fetchTable('Events', (r) => {
+        const f = r.fields;
+        return {
+            id: f.id || r.id,
+            title: f.title,
+            description: f.description,
+            date: f.date,
+            type: f.type,
+            durationMinutes: f.durationMinutes
+        } as CalendarEvent;
+    });}
+
+    async getScenarios() { return this.fetchTable('Scenarios', (r) => {
+        const f = r.fields;
+        return {
+            id: f.id || r.id,
+            title: f.title,
+            difficulty: f.difficulty,
+            clientRole: f.clientRole,
+            objective: f.objective,
+            initialMessage: f.initialMessage
+        } as ArenaScenario;
+    });}
+
+    async getNotifications() { return this.fetchTable('Notifications', (r) => {
+        const f = r.fields;
+        return {
+            id: f.id || r.id,
+            title: f.title,
+            message: f.message,
+            type: f.type,
+            date: f.date,
+            targetRole: f.targetRole
+        } as AppNotification;
+    });}
+
+    // --- SAVERS (For Admin Dashboard) ---
     async saveModule(module: Module) {
         await this.upsertRecord('Modules', 'id', module.id, {
             title: module.title,
@@ -280,22 +361,13 @@ class AirtableService {
             category: module.category,
             minLevel: module.minLevel,
             imageUrl: module.imageUrl,
-            videoUrl: module.videoUrl,
-            lessons: JSON.stringify(module.lessons)
+            videoUrl: module.videoUrl
         });
+        // Note: Saving individual lessons inside a module update from Admin Dashboard is complex via API 
+        // if we want to maintain the relational link automatically without record IDs.
+        // For this demo, we assume content is mostly managed IN Airtable, or updated individually.
     }
-
-    // MATERIALS
-    mapMaterial(record: any): Material {
-        const f = record.fields;
-        return {
-            id: f.id || record.id,
-            title: f.title,
-            description: f.description,
-            type: f.type,
-            url: f.url
-        };
-    }
+    
     async saveMaterial(mat: Material) {
         await this.upsertRecord('Materials', 'id', mat.id, {
             title: mat.title,
@@ -304,18 +376,6 @@ class AirtableService {
             url: mat.url
         });
     }
-
-    // STREAMS
-    mapStream(record: any): Stream {
-        const f = record.fields;
-        return {
-            id: f.id || record.id,
-            title: f.title,
-            date: f.date,
-            status: f.status,
-            youtubeUrl: f.youtubeUrl
-        };
-    }
     async saveStream(s: Stream) {
         await this.upsertRecord('Streams', 'id', s.id, {
             title: s.title,
@@ -323,19 +383,6 @@ class AirtableService {
             status: s.status,
             youtubeUrl: s.youtubeUrl
         });
-    }
-
-    // EVENTS
-    mapEvent(record: any): CalendarEvent {
-        const f = record.fields;
-        return {
-            id: f.id || record.id,
-            title: f.title,
-            description: f.description,
-            date: f.date,
-            type: f.type,
-            durationMinutes: f.durationMinutes
-        };
     }
     async saveEvent(e: CalendarEvent) {
         await this.upsertRecord('Events', 'id', e.id, {
@@ -346,19 +393,6 @@ class AirtableService {
             durationMinutes: e.durationMinutes
         });
     }
-
-    // SCENARIOS
-    mapScenario(record: any): ArenaScenario {
-        const f = record.fields;
-        return {
-            id: f.id || record.id,
-            title: f.title,
-            difficulty: f.difficulty,
-            clientRole: f.clientRole,
-            objective: f.objective,
-            initialMessage: f.initialMessage
-        };
-    }
     async saveScenario(s: ArenaScenario) {
         await this.upsertRecord('Scenarios', 'id', s.id, {
             title: s.title,
@@ -367,19 +401,6 @@ class AirtableService {
             objective: s.objective,
             initialMessage: s.initialMessage
         });
-    }
-
-    // NOTIFICATIONS
-    mapNotification(record: any): AppNotification {
-        const f = record.fields;
-        return {
-            id: f.id || record.id,
-            title: f.title,
-            message: f.message,
-            type: f.type,
-            date: f.date,
-            targetRole: f.targetRole
-        };
     }
     async saveNotification(n: AppNotification) {
         await this.upsertRecord('Notifications', 'id', n.id, {
@@ -390,34 +411,9 @@ class AirtableService {
             targetRole: n.targetRole
         });
     }
-
-    // CONFIG
-    async getConfigRecord(): Promise<AppConfig | null> {
-        const records = await this.fetchTable('Config', r => ({ key: r.fields.key, value: r.fields.value }));
-        const cfgRecord = records.find(r => r.key === 'appConfig');
-        if (cfgRecord && cfgRecord.value) {
-            try { return JSON.parse(cfgRecord.value); } catch(e) { console.error('Bad Config JSON', e); }
-        }
-        return null;
-    }
-    async saveConfig(config: AppConfig) {
-        await this.upsertRecord('Config', 'key', 'appConfig', {
-            value: JSON.stringify(config)
-        });
-    }
-
-    // USERS (LIST)
-    async getAllUsers(): Promise<UserProgress[]> {
-        return this.fetchTable('Users', (r) => this.mapRecordToUser(r));
-    }
-
-    // --- PUBLIC METHODS ---
-    async getModules() { return this.fetchTable('Modules', (r) => this.mapModule(r)); }
-    async getMaterials() { return this.fetchTable('Materials', (r) => this.mapMaterial(r)); }
-    async getStreams() { return this.fetchTable('Streams', (r) => this.mapStream(r)); }
-    async getEvents() { return this.fetchTable('Events', (r) => this.mapEvent(r)); }
-    async getScenarios() { return this.fetchTable('Scenarios', (r) => this.mapScenario(r)); }
-    async getNotifications() { return this.fetchTable('Notifications', (r) => this.mapNotification(r)); }
+    async getAllUsers() { return this.fetchTable('Users', (r) => this.mapRecordToUser(r)); }
+    async getConfigRecord() { return this.fetchTable('Config', r => ({ key: r.fields.key, value: r.fields.value })).then(r => r.find(x => x.key === 'appConfig') ? JSON.parse(r.find(x => x.key === 'appConfig')!.value) : null); }
+    async saveConfig(config: AppConfig) { await this.upsertRecord('Config', 'key', 'appConfig', { value: JSON.stringify(config) }); }
 }
 
 export const airtable = new AirtableService();

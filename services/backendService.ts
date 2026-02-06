@@ -10,12 +10,6 @@ type ContentTable = 'modules' | 'materials' | 'streams' | 'events' | 'scenarios'
 
 const SYNC_CHANNEL_NAME = 'salespro_sync_channel';
 
-/**
- * BACKEND SERVICE
- * Primary data orchestrator. 
- * Reads from Airtable (Source of Truth) -> Caches to LocalStorage -> Serves App.
- * Writes from App -> LocalStorage -> Syncs to Airtable (Background).
- */
 class BackendService {
   private channel: BroadcastChannel;
 
@@ -39,15 +33,11 @@ class BackendService {
 
   async syncUser(localUser: UserProgress): Promise<UserProgress> {
     try {
-        // Perform bi-directional sync (which now also pushes Notebook/Habits/Goals to their own tables)
         const syncedUser = await airtable.syncUser(localUser);
-        
-        // If the sync returned a different user object (newer from cloud), we update our local cache
         if (JSON.stringify(syncedUser) !== JSON.stringify(localUser)) {
              this.saveUserLocal(syncedUser);
              return syncedUser;
         }
-        
         return localUser;
     } catch (e) {
         Logger.warn('Backend: User Sync failed, using local.', e);
@@ -56,16 +46,9 @@ class BackendService {
   }
 
   async saveUser(user: UserProgress) {
-      // Update timestamp to mark this as a fresh change
       const updatedUser = { ...user, lastSyncTimestamp: Date.now() };
-      
-      // 1. Save Local immediately for UI responsiveness
       this.saveUserLocal(updatedUser);
-      
-      // 2. Sync Remote (Background)
-      // This will now ALSO trigger the syncing of Notebook, Habits, and Goals to their separate tables
       airtable.syncUser(updatedUser).then(synced => {
-          // If remote sync returned something (e.g. recordId assigned), update local again
           if (synced.airtableRecordId !== updatedUser.airtableRecordId) {
               this.saveUserLocal(synced);
           }
@@ -73,17 +56,12 @@ class BackendService {
   }
 
   private saveUserLocal(user: UserProgress) {
-    // Save to current user slot
     Storage.set('progress', user);
-
-    // Save to leaderboard list
     const allUsers = Storage.get<UserProgress[]>('allUsers', []);
     const idx = allUsers.findIndex(u => u.telegramId === user.telegramId);
     const newAllUsers = [...allUsers];
-    
     if (idx >= 0) newAllUsers[idx] = user;
     else newAllUsers.push(user);
-    
     Storage.set('allUsers', newAllUsers);
     this.notifySync(); 
   }
@@ -106,7 +84,6 @@ class BackendService {
   async saveGlobalConfig(config: AppConfig) {
       Storage.set('appConfig', config);
       this.notifySync();
-      // Push to Airtable
       await airtable.saveConfig(config);
   }
 
@@ -116,7 +93,7 @@ class BackendService {
       // Parallel fetch from Airtable
       try {
           const [mods, mats, strs, evts, scens] = await Promise.all([
-              airtable.getModules(),
+              airtable.getModulesWithLessons(), // Use new relational fetch
               airtable.getMaterials(),
               airtable.getStreams(),
               airtable.getEvents(),
@@ -165,7 +142,7 @@ class BackendService {
           this.notifySync();
       }
 
-      // 2. Push to Airtable (Naive Upsert for each item)
+      // 2. Push to Airtable
       try {
           for (const item of items) {
               switch (table) {
