@@ -199,6 +199,16 @@ export interface CalendarEvent {
   durationMinutes?: number;
 }
 
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  date: string;
+  type: 'INFO' | 'WARNING' | 'SUCCESS' | 'ALERT';
+  targetRole?: 'ALL' | 'STUDENT' | 'CURATOR';
+  isRead?: boolean;
+}
+
 export enum Tab {
   HOME = 'HOME', 
   MODULES = 'MODULES', 

@@ -1,12 +1,12 @@
 
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { Storage } from './storage';
-import { UserProgress, Module, Material, Stream, CalendarEvent, ArenaScenario } from '../types';
+import { UserProgress, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification, UserRole } from '../types';
 import { Logger } from './logger';
 import { COURSE_MODULES, MOCK_EVENTS, MOCK_MATERIALS, MOCK_STREAMS } from '../constants';
 import { SCENARIOS } from '../components/SalesArena';
 
-type ContentTable = 'modules' | 'materials' | 'streams' | 'events' | 'scenarios';
+type ContentTable = 'modules' | 'materials' | 'streams' | 'events' | 'scenarios' | 'notifications';
 
 class BackendService {
   
@@ -114,11 +114,15 @@ class BackendService {
           const { data, error } = await supabase!.from(table).select('*');
           
           if (error) {
+              // Silent fail for non-critical tables if missing
+              if (table === 'notifications' && error.code === '42P01') return [];
+              
               console.warn(`Backend: Error fetching ${table}`, error.message);
               return defaultData;
           }
 
           if (!data || data.length === 0) {
+              if (table === 'notifications') return []; // Don't seed notifications
               Logger.info(`Backend: ${table} is empty. Seeding...`);
               await this.saveCollection(table, defaultData);
               return defaultData;
@@ -139,14 +143,16 @@ class BackendService {
    */
   async saveCollection<T extends { id: string }>(table: ContentTable, items: T[]) {
       // Update Local Storage first
-      const storageKeyMap: Record<ContentTable, string> = {
+      const storageKeyMap: Partial<Record<ContentTable, string>> = {
           'modules': 'courseModules',
           'materials': 'materials',
           'streams': 'streams',
           'events': 'events',
           'scenarios': 'scenarios'
       };
-      Storage.set(storageKeyMap[table], items);
+      
+      const key = storageKeyMap[table];
+      if (key) Storage.set(key, items);
 
       if (!isSupabaseConfigured()) return;
 
@@ -162,12 +168,6 @@ class BackendService {
               .upsert(payload, { onConflict: 'id' });
 
           if (error) throw error;
-          
-          // Optional: Clean up deleted items? 
-          // For simplicity in this version, we just upsert. 
-          // True sync requires deleting IDs not in `items`.
-          const ids = items.map(i => i.id);
-          await supabase!.from(table).delete().neq('id', 'placeholder').not('id', 'in', `(${ids.map(id => `"${id}"`).join(',')})`);
 
           Logger.info(`Backend: Saved ${items.length} items to ${table}`);
 
@@ -175,6 +175,35 @@ class BackendService {
           Logger.error(`Backend: Save ${table} failed`, e);
       }
   }
+
+  // --- NOTIFICATIONS ---
+
+  async fetchNotifications(): Promise<AppNotification[]> {
+      return this.fetchCollection<AppNotification>('notifications', []);
+  }
+
+  async sendBroadcast(notification: AppNotification) {
+      if (!isSupabaseConfigured()) {
+          // Fallback to local
+          const current = Storage.get<AppNotification[]>('local_notifications', []);
+          Storage.set('local_notifications', [notification, ...current]);
+          return;
+      }
+
+      try {
+          const payload = {
+              id: notification.id,
+              data: notification
+          };
+          const { error } = await supabase!.from('notifications').insert(payload);
+          if (error) throw error;
+      } catch (e) {
+          Logger.error('Backend: Send broadcast failed', e);
+          throw e;
+      }
+  }
+
+  // --- USER MANAGEMENT ---
 
   async getLeaderboard(): Promise<UserProgress[]> {
      if (!isSupabaseConfigured()) {

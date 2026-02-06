@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Tab, UserProgress, Lesson, AppConfig, Module, Material, Stream, CalendarEvent, ArenaScenario } from './types';
+import { Tab, UserProgress, Lesson, AppConfig, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification } from './types';
 import { COURSE_MODULES, MOCK_EVENTS, MOCK_MATERIALS, MOCK_STREAMS } from './constants';
 import { HomeDashboard } from './components/HomeDashboard';
 import { Profile } from './components/Profile';
@@ -18,7 +18,6 @@ import { NotebookView } from './components/NotebookView';
 import { MaterialsView } from './components/MaterialsView';
 import { StreamsView } from './components/StreamsView';
 import { SystemHealthAgent } from './components/SystemHealthAgent';
-import { ChatAssistant } from './components/ChatAssistant';
 import { Backend } from './services/backendService';
 import { XPService } from './services/xpService';
 
@@ -85,6 +84,7 @@ const App: React.FC = () => {
   const [scenarios, setScenarios] = useState<ArenaScenario[]>(() => Storage.get<ArenaScenario[]>('scenarios', SCENARIOS));
   const [allUsers, setAllUsers] = useState<UserProgress[]>(() => Storage.get<UserProgress[]>('allUsers', []));
   const [userProgress, setUserProgress] = useState<UserProgress>(() => Storage.get<UserProgress>('progress', DEFAULT_USER));
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   const activeLesson = selectedLessonId ? modules.flatMap(m => m.lessons).find(l => l.id === selectedLessonId) : null;
   const activeModule = activeLesson ? modules.find(m => m.lessons.some(l => l.id === activeLesson.id)) : null;
@@ -118,6 +118,10 @@ const App: React.FC = () => {
           // 3. Sync Users List (for Leaderboard)
           const leaderboard = await Backend.getLeaderboard();
           setAllUsers(leaderboard);
+
+          // 4. Fetch Notifications
+          const notifs = await Backend.fetchNotifications();
+          setNotifications(notifs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
       };
 
       initSync();
@@ -235,9 +239,6 @@ const App: React.FC = () => {
       
       <SystemHealthAgent config={appConfig.systemAgent} />
 
-      {/* Global AI Assistant */}
-      <ChatAssistant />
-
       <div className="fixed top-[var(--safe-top)] left-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
         {toasts.map(t => <Toast key={t.id} toast={t} onRemove={removeToast} />)}
       </div>
@@ -267,6 +268,7 @@ const App: React.FC = () => {
                    onSelectLesson={(l) => setSelectedLessonId(l.id)}
                    onUpdateUser={handleUpdateUser}
                    allUsers={allUsers}
+                   notifications={notifications}
                  />
               )}
               

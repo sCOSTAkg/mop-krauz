@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { AppConfig, Module, UserProgress, UserRole, Material, Stream, Lesson, HomeworkType, ArenaScenario, CalendarEvent, EventType, AIProviderId } from '../types';
+import { AppConfig, Module, UserProgress, UserRole, Material, Stream, Lesson, HomeworkType, ArenaScenario, CalendarEvent, EventType, AIProviderId, AppNotification } from '../types';
 import { AIService } from '../services/aiService';
 import { Button } from './Button';
 import { telegram } from '../services/telegramService';
 import { Storage } from '../services/storage';
 import { CalendarView } from './CalendarView';
+import { Backend } from '../services/backendService';
 
 // --- UI COMPONENTS (InputGroup, StyledInput, etc. - kept identical) ---
 const InputGroup = ({ label, children, className = '' }: { label: string, children?: React.ReactNode, className?: string }) => (
@@ -98,6 +99,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   // Broadcast State
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastType, setBroadcastType] = useState<'INFO' | 'WARNING' | 'SUCCESS' | 'ALERT'>('INFO');
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
 
   // Deploy State
   const [deployProgress, setDeployProgress] = useState(0);
@@ -105,12 +108,58 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // --- ACTIONS ---
 
-  const handleBroadcast = () => {
+  const handleBroadcast = async () => {
       if (!broadcastMsg.trim()) return;
-      telegram.haptic('success');
-      addToast('success', `Рассылка отправлена ${users.length} пользователям`);
-      setBroadcastMsg('');
-      setBroadcastTitle('');
+      setIsSendingBroadcast(true);
+
+      const notification: AppNotification = {
+          id: Date.now().toString(),
+          title: broadcastTitle || 'Оповещение Штаба',
+          message: broadcastMsg,
+          type: broadcastType,
+          date: new Date().toISOString(),
+          targetRole: 'ALL'
+      };
+
+      try {
+        await Backend.sendBroadcast(notification);
+        telegram.haptic('success');
+        addToast('success', `Рассылка отправлена успешно`);
+        setBroadcastMsg('');
+        setBroadcastTitle('');
+      } catch (e) {
+        addToast('error', 'Ошибка отправки рассылки');
+      } finally {
+        setIsSendingBroadcast(false);
+      }
+  };
+
+  const handleUpdateUserRole = async (user: UserProgress, newRole: UserRole) => {
+      if (!confirm(`Изменить роль ${user.name} на ${newRole}?`)) return;
+      
+      const updatedUser = { ...user, role: newRole };
+      // Optimistic update
+      const newUsers = users.map(u => u.telegramId === user.telegramId ? updatedUser : u);
+      onUpdateUsers(newUsers);
+
+      // Persist
+      await Backend.saveUser(updatedUser);
+      addToast('success', `Роль пользователя ${user.name} обновлена`);
+  };
+
+  const handleBanUser = async (user: UserProgress) => {
+      if (!confirm(`Вы уверены, что хотите заблокировать ${user.name}?`)) return;
+      
+      // We don't delete from DB in this demo, just from local list and maybe set a flag in DB if we had one.
+      // For now, remove from list implies ban in this simple system.
+      // To properly ban, we should ideally have a 'banned' status in DB.
+      // Here we will just remove them from the UI list which effectively hides them from leaderboard.
+      
+      const newUsers = users.filter(u => u.telegramId !== user.telegramId);
+      onUpdateUsers(newUsers);
+      
+      // In a real app, send a delete request or update status='BANNED'
+      addToast('info', 'Пользователь удален из списков');
   };
 
   const handleClearCache = async () => {
@@ -218,7 +267,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         onChange={e => setBroadcastMsg(e.target.value)}
                         className="!py-3"
                      />
-                     <Button onClick={handleBroadcast} disabled={!broadcastMsg} className="!w-auto !px-6">🚀</Button>
+                     <Button onClick={handleBroadcast} disabled={!broadcastMsg || isSendingBroadcast} className="!w-auto !px-6" loading={isSendingBroadcast}>🚀</Button>
                  </div>
              </AdminCard>
 
@@ -624,7 +673,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                   <td className="p-4">
                                       <select 
                                           value={u.role} 
-                                          onChange={(e) => { const n = [...users]; n[idx] = { ...u, role: e.target.value as UserRole }; onUpdateUsers(n); }}
+                                          onChange={(e) => handleUpdateUserRole(u, e.target.value as UserRole)}
                                           className="bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#6C5DD3]"
                                       >
                                           <option value="STUDENT">Student</option>
@@ -633,8 +682,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                       </select>
                                   </td>
                                   <td className="p-4 text-right space-x-2">
-                                      <button onClick={() => { if(confirm('Reset?')) { const n = [...users]; n[idx] = { ...u, xp: 0, level: 1 }; onUpdateUsers(n); } }} className="text-white/30 hover:text-white text-xs">Reset</button>
-                                      <button onClick={() => { if(confirm('Ban?')) { const n = [...users]; n.splice(idx, 1); onUpdateUsers(n); } }} className="text-red-500 hover:text-red-400 text-xs font-bold">BAN</button>
+                                      <button onClick={() => { if(confirm('Reset?')) { const n = [...users]; n[idx] = { ...u, xp: 0, level: 1 }; onUpdateUsers(n); Backend.saveUser(n[idx]); } }} className="text-white/30 hover:text-white text-xs">Reset</button>
+                                      <button onClick={() => handleBanUser(u)} className="text-red-500 hover:text-red-400 text-xs font-bold">BAN</button>
                                   </td>
                               </tr>
                           ))}
@@ -695,6 +744,13 @@ create table if not exists scenarios (
   updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 
+-- 7. Notifications Table
+create table if not exists notifications (
+  id text primary key,
+  data jsonb not null,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
 -- Enable RLS
 alter table profiles enable row level security;
 alter table modules enable row level security;
@@ -702,6 +758,7 @@ alter table materials enable row level security;
 alter table streams enable row level security;
 alter table events enable row level security;
 alter table scenarios enable row level security;
+alter table notifications enable row level security;
 
 -- Policies (Public Read, Public Write/Update for simplicity in demo, should be restricted in prod)
 create policy "Public profiles" on profiles for all using (true);
@@ -710,6 +767,7 @@ create policy "Public materials" on materials for all using (true);
 create policy "Public streams" on streams for all using (true);
 create policy "Public events" on events for all using (true);
 create policy "Public scenarios" on scenarios for all using (true);
+create policy "Public notifications" on notifications for all using (true);
     `;
 
     return (
@@ -811,14 +869,26 @@ create policy "Public scenarios" on scenarios for all using (true);
                 <AdminCard className="animate-slide-up">
                     <SectionHeader title="Центр Вещания" subtitle="Отправка уведомлений и новостей" />
                     <div className="space-y-6 max-w-2xl">
-                        <InputGroup label="Заголовок (Опционально)">
+                        <InputGroup label="Заголовок">
                             <StyledInput placeholder="Например: Срочная новость" value={broadcastTitle} onChange={e => setBroadcastTitle(e.target.value)} />
                         </InputGroup>
                         <InputGroup label="Текст сообщения">
                             <StyledTextarea placeholder="Введите текст рассылки..." value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)} className="min-h-[150px] text-base" />
                         </InputGroup>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <InputGroup label="Тип оповещения">
+                                <StyledSelect value={broadcastType} onChange={e => setBroadcastType(e.target.value as any)}>
+                                    <option value="INFO">Инфо</option>
+                                    <option value="SUCCESS">Успех</option>
+                                    <option value="WARNING">Внимание</option>
+                                    <option value="ALERT">Тревога</option>
+                                </StyledSelect>
+                            </InputGroup>
+                        </div>
+
                         <div className="flex items-center justify-end gap-4 pt-4">
-                            <Button onClick={handleBroadcast} disabled={!broadcastMsg} icon={<span>📨</span>}>Отправить Рассылку</Button>
+                            <Button onClick={handleBroadcast} disabled={!broadcastMsg || isSendingBroadcast} loading={isSendingBroadcast} icon={<span>📨</span>}>Отправить Рассылку</Button>
                         </div>
                     </div>
                 </AdminCard>

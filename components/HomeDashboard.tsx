@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Tab, UserProgress, Lesson, Material, Stream, ArenaScenario } from '../types';
+import { Tab, UserProgress, Lesson, Material, Stream, ArenaScenario, AppNotification } from '../types';
 import { ModuleList } from './ModuleList';
 import { telegram } from '../services/telegramService';
 
@@ -15,6 +15,7 @@ interface HomeDashboardProps {
   onSelectLesson: (lesson: Lesson) => void;
   onUpdateUser: (data: Partial<UserProgress>) => void;
   allUsers: UserProgress[];
+  notifications?: AppNotification[];
 }
 
 export const HomeDashboard: React.FC<HomeDashboardProps> = ({ 
@@ -23,8 +24,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onProfileClick,
   modules,
   onSelectLesson,
+  notifications = []
 }) => {
   const [activeCategory, setActiveCategory] = useState<'ALL' | 'SALES' | 'PSYCHOLOGY' | 'TACTICS'>('ALL');
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Calculate overall course progress
   const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0);
@@ -42,8 +45,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     { id: 'TACTICS', label: 'Тактика', icon: '⚔️' }
   ] as const;
 
-  const handleNotifications = () => {
-      telegram.showAlert('Уведомлений пока нет', 'Центр связи');
+  const handleNotificationsToggle = () => {
+      setShowNotifications(!showNotifications);
       telegram.haptic('light');
   };
 
@@ -66,13 +69,49 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               </div>
           </div>
           
-          <button 
-            onClick={handleNotifications}
-            className="w-10 h-10 rounded-2xl bg-surface border border-border-color flex items-center justify-center text-text-primary shadow-sm hover:scale-105 active:scale-95 transition-all relative overflow-hidden group"
-          >
-              <div className="absolute inset-0 bg-[#6C5DD3]/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <span className="text-xl relative z-10">🔔</span>
-          </button>
+          <div className="relative">
+              <button 
+                onClick={handleNotificationsToggle}
+                className="w-10 h-10 rounded-2xl bg-surface border border-border-color flex items-center justify-center text-text-primary shadow-sm hover:scale-105 active:scale-95 transition-all relative overflow-hidden group"
+              >
+                  <div className="absolute inset-0 bg-[#6C5DD3]/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <span className="text-xl relative z-10">🔔</span>
+                  {notifications.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
+              </button>
+
+              {/* Notification Popup */}
+              {showNotifications && (
+                  <>
+                      <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" onClick={() => setShowNotifications(false)}></div>
+                      <div className="absolute right-0 top-12 z-50 w-80 bg-surface border border-border-color rounded-2xl shadow-2xl p-4 animate-scale-in origin-top-right">
+                          <h3 className="text-xs font-black uppercase tracking-widest text-text-secondary mb-3">Оповещения ({notifications.length})</h3>
+                          <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-2">
+                              {notifications.length === 0 ? (
+                                  <p className="text-xs text-text-secondary text-center py-4">Тишина в эфире...</p>
+                              ) : (
+                                  notifications.map(n => (
+                                      <div key={n.id} className={`p-3 rounded-xl border flex flex-col gap-1 ${
+                                          n.type === 'ALERT' ? 'bg-red-500/10 border-red-500/20' : 
+                                          n.type === 'SUCCESS' ? 'bg-green-500/10 border-green-500/20' : 
+                                          'bg-body border-border-color'
+                                      }`}>
+                                          <div className="flex justify-between items-start">
+                                              <span className={`text-[10px] font-black uppercase tracking-wide ${
+                                                  n.type === 'ALERT' ? 'text-red-500' : 
+                                                  n.type === 'SUCCESS' ? 'text-green-500' : 'text-[#6C5DD3]'
+                                              }`}>{n.type}</span>
+                                              <span className="text-[9px] text-text-secondary">{new Date(n.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                          </div>
+                                          <h4 className="text-xs font-bold text-text-primary">{n.title}</h4>
+                                          <p className="text-[10px] text-text-secondary leading-snug">{n.message}</p>
+                                      </div>
+                                  ))
+                              )}
+                          </div>
+                      </div>
+                  </>
+              )}
+          </div>
       </div>
 
       <div className="px-5 pt-6 pb-32 space-y-7 animate-fade-in max-w-2xl mx-auto">
