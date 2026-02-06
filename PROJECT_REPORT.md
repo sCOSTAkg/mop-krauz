@@ -1,6 +1,7 @@
 # Project Report: SalesPro Spartans
 
 ## 1. Critical Fixes
+- **Syntax Error in AdminDashboard**: Fixed a critical syntax error in `components/AdminDashboard.tsx`. The main `div` container in the `return` statement was not properly closed, causing the build to fail with "Unexpected end of file". Added the missing closing `</div>` tag.
 - **NPM Package Resolution**: Fixed build failure by updating `@google/genai` version from `^0.1.1` to `^0.2.0` in `package.json`. The previous version was not found in the registry.
 - **Service Worker Optimization**: Removed `index.tsx` from the cache list in `service-worker.js`. Since the app is built with Vite, source files should not be cached. Added logic to better handle external API requests (skipping cache for Google/Supabase).
 
