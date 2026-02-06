@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Tab, UserProgress, Lesson, UserRole, AppConfig, Module, Material, Stream, CalendarEvent, ArenaScenario } from './types';
+import { Tab, UserProgress, Lesson, AppConfig, Module, Material, Stream, CalendarEvent, ArenaScenario } from './types';
 import { COURSE_MODULES, MOCK_EVENTS, MOCK_MATERIALS, MOCK_STREAMS } from './constants';
 import { HomeDashboard } from './components/HomeDashboard';
 import { Profile } from './components/Profile';
@@ -75,6 +75,7 @@ const App: React.FC = () => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [showWelcome, setShowWelcome] = useState(true);
 
+  // Initialize from LocalStorage (Fast Load)
   const [appConfig, setAppConfig] = useState<AppConfig>(() => Storage.get<AppConfig>('appConfig', DEFAULT_CONFIG));
   const [modules, setModules] = useState<Module[]>(() => Storage.get<Module[]>('courseModules', COURSE_MODULES));
   const [materials, setMaterials] = useState<Material[]>(() => Storage.get<Material[]>('materials', MOCK_MATERIALS));
@@ -87,6 +88,41 @@ const App: React.FC = () => {
   const activeLesson = selectedLessonId ? modules.flatMap(m => m.lessons).find(l => l.id === selectedLessonId) : null;
   const activeModule = activeLesson ? modules.find(m => m.lessons.some(l => l.id === activeLesson.id)) : null;
 
+  // --- INITIAL SYNC ---
+  useEffect(() => {
+      const initSync = async () => {
+          // 1. Sync User Profile
+          if (userProgress.isAuthenticated) {
+              const syncedUser = await Backend.syncUser(userProgress);
+              setUserProgress(syncedUser);
+          }
+
+          // 2. Sync Content (Modules, Materials, etc.)
+          const cloudContent = await Backend.fetchAllContent();
+          if (cloudContent) {
+              setModules(cloudContent.modules);
+              setMaterials(cloudContent.materials);
+              setStreams(cloudContent.streams);
+              setEvents(cloudContent.events);
+              setScenarios(cloudContent.scenarios);
+              
+              // Update local cache
+              Storage.set('courseModules', cloudContent.modules);
+              Storage.set('materials', cloudContent.materials);
+              Storage.set('streams', cloudContent.streams);
+              Storage.set('events', cloudContent.events);
+              Storage.set('scenarios', cloudContent.scenarios);
+          }
+
+          // 3. Sync Users List (for Leaderboard)
+          const leaderboard = await Backend.getLeaderboard();
+          setAllUsers(leaderboard);
+      };
+
+      initSync();
+  }, [userProgress.isAuthenticated]);
+
+  // --- THEME & PERSISTENCE ---
   useEffect(() => {
     const root = document.documentElement;
     if (userProgress.theme === 'DARK') {
@@ -106,8 +142,14 @@ const App: React.FC = () => {
 
   useEffect(() => {
     Storage.set('progress', userProgress);
-    if (userProgress.isAuthenticated) Backend.saveUser(userProgress);
+    // Debounce save slightly to avoid hammering DB on every keystroke
+    const timer = setTimeout(() => {
+        if (userProgress.isAuthenticated) Backend.saveUser(userProgress);
+    }, 1000);
+    return () => clearTimeout(timer);
   }, [userProgress]);
+
+  // --- ACTIONS ---
 
   const addToast = (type: 'success' | 'error' | 'info', message: string) => {
     const id = Date.now().toString();
@@ -118,29 +160,26 @@ const App: React.FC = () => {
   const removeToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
 
   const handleLogin = async (userData: any) => {
+    // Optimistic Update
     const tempUser = { ...userProgress, ...userData, isAuthenticated: true };
+    setUserProgress(tempUser);
+    setShowWelcome(false);
     
     // Check Referral
     if (userData.isRegistration && window.Telegram?.WebApp?.initDataUnsafe?.start_param) {
         const startParam = window.Telegram.WebApp.initDataUnsafe.start_param;
         if (startParam.startsWith('ref_')) {
             const referrerUsername = startParam.replace('ref_', '');
-            // Find Referrer in allUsers (Simulated, usually needs backend)
             const referrer = allUsers.find(u => u.telegramUsername?.toLowerCase() === referrerUsername.toLowerCase());
             
             if (referrer) {
                 const result = XPService.addReferral(referrer);
-                // Update local list of users immediately
-                const updatedUsers = allUsers.map(u => u.telegramUsername === referrer.telegramUsername ? result.user : u);
-                setAllUsers(updatedUsers);
-                Backend.saveUser(result.user); // Save to backend
+                // Save Referrer Update
+                Backend.saveUser(result.user);
                 telegram.showAlert(`Вас пригласил ${referrer.name}. Бонус начислен!`, 'Referral');
             }
         }
     }
-
-    setUserProgress(tempUser);
-    setShowWelcome(false);
     addToast('success', 'С возвращением, боец!');
   };
 
@@ -153,7 +192,6 @@ const App: React.FC = () => {
   const handleUpdateUser = (data: Partial<UserProgress>) => setUserProgress(prev => ({ ...prev, ...data }));
 
   const handleCompleteLesson = (lessonId: string, xpBonus: number) => {
-      // XP Bonus already calculated by XPService in LessonView
       const newXp = userProgress.xp + xpBonus;
       const newLevel = Math.floor(newXp / 1000) + 1;
       
@@ -167,7 +205,6 @@ const App: React.FC = () => {
       setSelectedLessonId(null);
   };
 
-  // Helper to handle simple XP awards from sub-components
   const handleXPEarned = (amount: number) => {
       setUserProgress(prev => {
           const newXp = prev.xp + amount;
@@ -179,6 +216,13 @@ const App: React.FC = () => {
       });
       addToast('success', `+${amount} XP`);
   };
+
+  // --- CONTENT UPDATES (ADMIN) ---
+  const updateModules = (newModules: Module[]) => { setModules(newModules); Backend.saveCollection('modules', newModules); };
+  const updateMaterials = (newMats: Material[]) => { setMaterials(newMats); Backend.saveCollection('materials', newMats); };
+  const updateStreams = (newStreams: Stream[]) => { setStreams(newStreams); Backend.saveCollection('streams', newStreams); };
+  const updateEvents = (newEvents: CalendarEvent[]) => { setEvents(newEvents); Backend.saveCollection('events', newEvents); };
+  const updateScenarios = (newScenarios: ArenaScenario[]) => { setScenarios(newScenarios); Backend.saveCollection('scenarios', newScenarios); };
 
   if (!userProgress.isAuthenticated) {
     if (showWelcome) return <Welcome onStart={() => setShowWelcome(false)} />;
@@ -265,15 +309,15 @@ const App: React.FC = () => {
                     config={appConfig}
                     onUpdateConfig={(c) => { setAppConfig(c); Storage.set('appConfig', c); }}
                     modules={modules}
-                    onUpdateModules={(m) => { setModules(m); Storage.set('courseModules', m); }}
+                    onUpdateModules={updateModules}
                     materials={materials}
-                    onUpdateMaterials={(m) => { setMaterials(m); Storage.set('materials', m); }}
+                    onUpdateMaterials={updateMaterials}
                     streams={streams}
-                    onUpdateStreams={(s) => { setStreams(s); Storage.set('streams', s); }}
+                    onUpdateStreams={updateStreams}
                     events={events}
-                    onUpdateEvents={(e) => { setEvents(e); Storage.set('events', e); }}
+                    onUpdateEvents={updateEvents}
                     scenarios={scenarios}
-                    onUpdateScenarios={(s) => { setScenarios(s); Storage.set('scenarios', s); }}
+                    onUpdateScenarios={updateScenarios}
                     users={allUsers}
                     onUpdateUsers={(u) => { setAllUsers(u); Storage.set('allUsers', u); }}
                     currentUser={userProgress}

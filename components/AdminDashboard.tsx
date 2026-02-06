@@ -8,8 +8,7 @@ import { telegram } from '../services/telegramService';
 import { Storage } from '../services/storage';
 import { CalendarView } from './CalendarView';
 
-// --- UI COMPONENTS ---
-  
+// --- UI COMPONENTS (InputGroup, StyledInput, etc. - kept identical) ---
 const InputGroup = ({ label, children, className = '' }: { label: string, children?: React.ReactNode, className?: string }) => (
     <div className={`space-y-2 w-full ${className}`}>
         <label className="text-[10px] font-black text-[#6C5DD3] uppercase tracking-widest pl-1 opacity-80">{label}</label>
@@ -646,7 +645,74 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
   );
 
-  const renderDatabase = () => (
+  const renderDatabase = () => {
+    const fullSchemaSQL = `
+-- 1. Profiles Table (Users)
+create table if not exists profiles (
+  id uuid references auth.users on delete cascade,
+  telegram_id text unique,
+  username text,
+  role text default 'STUDENT',
+  xp bigint default 0,
+  level int default 1,
+  data jsonb default '{}'::jsonb,
+  updated_at timestamp with time zone default timezone('utc'::text, now()),
+  primary key (telegram_id)
+);
+
+-- 2. Modules Table
+create table if not exists modules (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 3. Materials Table
+create table if not exists materials (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 4. Streams Table
+create table if not exists streams (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 5. Events Table (Calendar)
+create table if not exists events (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- 6. Scenarios Table (Arena)
+create table if not exists scenarios (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- Enable RLS
+alter table profiles enable row level security;
+alter table modules enable row level security;
+alter table materials enable row level security;
+alter table streams enable row level security;
+alter table events enable row level security;
+alter table scenarios enable row level security;
+
+-- Policies (Public Read, Public Write/Update for simplicity in demo, should be restricted in prod)
+create policy "Public profiles" on profiles for all using (true);
+create policy "Public modules" on modules for all using (true);
+create policy "Public materials" on materials for all using (true);
+create policy "Public streams" on streams for all using (true);
+create policy "Public events" on events for all using (true);
+create policy "Public scenarios" on scenarios for all using (true);
+    `;
+
+    return (
     <div className="space-y-6 animate-slide-up">
         <AdminCard>
             <div className="absolute top-0 right-0 p-6 opacity-5 text-9xl grayscale rotate-12">🗄️</div>
@@ -684,28 +750,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                 <div className="bg-black/40 p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
                     <div>
-                        <h4 className="text-xs font-black text-[#6C5DD3] uppercase tracking-widest mb-3">SQL Setup Query</h4>
-                        <div className="bg-[#0F1115] p-3 rounded-xl border border-white/5 font-mono text-[10px] text-slate-400 overflow-x-auto max-h-40 custom-scrollbar">
-                            <pre>{`create table profiles (
-  id uuid references auth.users on delete cascade,
-  telegram_id text unique,
-  username text,
-  role text default 'STUDENT',
-  xp bigint default 0,
-  level int default 1,
-  data jsonb default '{}'::jsonb,
-  updated_at timestamp with time zone default timezone('utc'::text, now()),
-  primary key (telegram_id)
-);
-alter table profiles enable row level security;
-create policy "Public profiles are viewable by everyone." on profiles for select using ( true );
-create policy "Users can insert their own profile." on profiles for insert with check ( true );
-create policy "Users can update own profile." on profiles for update using ( true );`}</pre>
+                        <h4 className="text-xs font-black text-[#6C5DD3] uppercase tracking-widest mb-3">SQL Setup Query (Run Once)</h4>
+                        <div className="bg-[#0F1115] p-3 rounded-xl border border-white/5 font-mono text-[10px] text-slate-400 overflow-x-auto max-h-60 custom-scrollbar">
+                            <pre>{fullSchemaSQL}</pre>
                         </div>
                     </div>
                     <button 
                         onClick={() => {
-                            navigator.clipboard.writeText(`create table profiles ( id uuid references auth.users on delete cascade, telegram_id text unique, username text, role text default 'STUDENT', xp bigint default 0, level int default 1, data jsonb default '{}'::jsonb, updated_at timestamp with time zone default timezone('utc'::text, now()), primary key (telegram_id) ); alter table profiles enable row level security; create policy "Public profiles are viewable by everyone." on profiles for select using ( true ); create policy "Users can insert their own profile." on profiles for insert with check ( true ); create policy "Users can update own profile." on profiles for update using ( true );`);
+                            navigator.clipboard.writeText(fullSchemaSQL);
                             addToast('success', 'SQL скопирован в буфер');
                         }}
                         className="mt-4 w-full py-3 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold text-white transition-colors"
@@ -734,6 +786,7 @@ create policy "Users can update own profile." on profiles for update using ( tru
         </AdminCard>
     </div>
   );
+  };
 
   return (
     <div className="min-h-screen bg-[#050505] pb-40 pt-16 px-4 md:px-8 overflow-y-auto custom-scrollbar">
