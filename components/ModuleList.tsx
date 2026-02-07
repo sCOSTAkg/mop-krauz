@@ -238,10 +238,23 @@ export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, o
                 {/* Header Image */}
                 <div className="relative h-48 flex-shrink-0">
                     <div className="absolute inset-0">
-                        <img 
-                            src={selectedModule.imageUrl || getYouTubeThumbnail(selectedModule.videoUrl) || ''} 
-                            className="w-full h-full object-cover"
-                        />
+                        {selectedModule.imageUrl ? (
+                            <img 
+                                src={selectedModule.imageUrl} 
+                                className="w-full h-full object-cover"
+                            />
+                        ) : selectedModule.videoUrl ? (
+                            <video 
+                                src={selectedModule.videoUrl} 
+                                className="w-full h-full object-cover"
+                                controls
+                            />
+                        ) : (
+                            <img 
+                                src={getYouTubeThumbnail(selectedModule.videoUrl) || ''} 
+                                className="w-full h-full object-cover"
+                            />
+                        )}
                         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0F1115]/60 to-[#0F1115]"></div>
                     </div>
                     <div className="absolute bottom-4 left-6 right-6">
@@ -315,6 +328,17 @@ export const ModuleList: React.FC<ModuleListProps> = ({ modules, userProgress, o
                     {/* Bottom Padding for scroll */}
                     <div className="h-10"></div>
                 </div>
+                {isAdmin && (
+                    <div className="p-4 bg-[#0F1115] border-t border-white/10">
+                        <label className="block text-xs font-black text-white mb-1">Видео URL модуля</label>
+                        <input
+                            type="text"
+                            value={selectedModule.videoUrl || ''}
+                            onChange={e => setSelectedModule({ ...selectedModule, videoUrl: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:border-[#6C5DD3] outline-none"
+                        />
+                    </div>
+                )}
                 
                 {/* Fixed Footer with Start Button if accessible */}
                 {(!userProgress.level || userProgress.level >= selectedModule.minLevel) && isAuthenticated && (
