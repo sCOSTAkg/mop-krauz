@@ -1,11 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import ReactPlayer from 'react-player';
-import { Stream, UserProgress, SmartNavAction, VideoCategory } from '../types';
-import { XPService } from '../services/xpService';
-import { telegram } from '../services/telegramService';
-
-const VideoPlayer = ReactPlayer as unknown as React.ComponentType<any>;
+import { VideoPlayerWrapper } from './VideoPlayerWrapper';
 
 interface VideoHubProps {
   streams: Stream[];
@@ -102,7 +97,7 @@ export const VideoHub: React.FC<VideoHubProps> = ({ streams, userProgress, onUpd
             {filteredStreams.map((stream, i) => (
                 <div key={stream.id} className="group bg-surface rounded-[2.5rem] overflow-hidden border border-border-color shadow-sm hover:shadow-xl transition-all animate-slide-up" style={{ animationDelay: `${i*0.1}s` }}>
                     <div className="relative aspect-video bg-black overflow-hidden">
-                        <VideoPlayer 
+                        <VideoPlayerWrapper 
                             url={stream.youtubeUrl} 
                             width="100%" 
                             height="100%" 
