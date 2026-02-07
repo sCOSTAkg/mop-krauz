@@ -57,6 +57,22 @@ const EditSection = ({ title, isOpen, onToggle, children, icon, colorClass = "te
   </div>
 );
 
+// Time parsing for seeking
+const parseTimestamp = (time: string) => {
+    const parts = time.split(':').map(Number);
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    return 0;
+};
+
+// Regex to find timestamps like 00:00 or 00:00:00 and convert to links
+const linkifyTimestamps = (text: string) => {
+    return text.replace(/(\d{1,2}:\d{2}(?::\d{2})?)/g, (match) => {
+        const seconds = parseTimestamp(match);
+        return `[${match}](timestamp:${seconds})`;
+    });
+};
+
 export const LessonView: React.FC<LessonViewProps> = ({ 
   lesson, 
   isCompleted, 
@@ -76,6 +92,11 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const [questionText, setQuestionText] = useState('');
   const [isAsking, setIsAsking] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
+  
+  // Video Player State
+  const playerRef = useRef<any>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const prevLessonIdRef = useRef(lesson.id);
 
   // Admin State
   const isAdmin = userProgress.role === 'ADMIN';
@@ -88,10 +109,20 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const questionsAskedCount = userProgress.stats?.questionsAsked?.[lesson.id] || 0;
   const questionsRemaining = XP_RULES.MAX_QUESTIONS_PER_LESSON - questionsAskedCount;
 
-  // Sync edited state when lesson changes
+  // Sync edited state when lesson changes & Auto-play logic
   useEffect(() => {
       setEditedLesson(lesson);
       setIsVideoReady(false);
+      
+      // Auto-play logic: if lesson ID changes (navigation), start playing
+      if (prevLessonIdRef.current !== lesson.id) {
+          setIsPlaying(true);
+          prevLessonIdRef.current = lesson.id;
+      } else {
+          // On initial mount or same lesson, keep default (false)
+          setIsPlaying(false);
+      }
+
       // Reset scroll on lesson change
       const main = document.querySelector('main');
       if (main) main.scrollTop = 0;
@@ -168,6 +199,20 @@ export const LessonView: React.FC<LessonViewProps> = ({
       }, 0);
   };
 
+  const handleSeek = (seconds: number) => {
+      if (playerRef.current) {
+          playerRef.current.seekTo(seconds, 'seconds');
+          setIsPlaying(true);
+          telegram.haptic('selection');
+          
+          // Scroll to video if needed
+          const videoElement = document.getElementById('video-player-container');
+          if (videoElement) {
+              videoElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+      }
+  };
+
   const videoUrl = lesson.videoUrl || parentModule?.videoUrl;
   const hasVideo = !!videoUrl;
 
@@ -175,6 +220,9 @@ export const LessonView: React.FC<LessonViewProps> = ({
   const currentIndex = parentModule?.lessons.findIndex(l => l.id === lesson.id) ?? -1;
   const prevLesson = currentIndex > 0 ? parentModule?.lessons[currentIndex - 1] : null;
   const nextLesson = (parentModule && currentIndex < parentModule.lessons.length - 1) ? parentModule.lessons[currentIndex + 1] : null;
+
+  // Process markdown to make timestamps clickable
+  const processedContent = linkifyTimestamps(lesson.content);
 
   // --- ADMIN EDIT RENDER ---
   if (isEditing && isAdmin) {
@@ -350,7 +398,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
         
         {/* Video Player Section */}
         {hasVideo && (
-            <div className="relative rounded-[2.5rem] overflow-hidden shadow-2xl aspect-video bg-black ring-1 ring-white/5">
+            <div id="video-player-container" className="relative rounded-[2.5rem] overflow-hidden shadow-2xl aspect-video bg-black ring-1 ring-white/5">
                 {!isVideoReady && (
                     <div className="absolute inset-0 flex items-center justify-center bg-[#16181D] animate-pulse z-10">
                         <div className="flex flex-col items-center gap-3">
@@ -360,10 +408,14 @@ export const LessonView: React.FC<LessonViewProps> = ({
                     </div>
                 )}
                 <VideoPlayer 
+                    ref={playerRef}
                     url={videoUrl} 
                     width="100%" 
                     height="100%" 
+                    playing={isPlaying}
                     controls={true}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
                     onReady={() => setIsVideoReady(true)}
                     config={{ youtube: { playerVars: { origin: window.location.origin }}}}
                 />
@@ -382,9 +434,24 @@ export const LessonView: React.FC<LessonViewProps> = ({
                         p: ({node, ...p}) => <p className="mb-6 leading-relaxed font-medium opacity-80" {...p} />,
                         ul: ({node, ...p}) => <ul className="list-disc pl-6 mb-6 space-y-2 marker:text-[#6C5DD3]" {...p} />,
                         blockquote: ({node, ...p}) => <blockquote className="border-l-4 border-[#6C5DD3] bg-[#6C5DD3]/5 p-5 rounded-2xl italic my-8 text-text-primary/70" {...p} />,
+                        a: ({node, href, children, ...props}) => {
+                            // Intercept timestamp links
+                            if (href?.startsWith('timestamp:')) {
+                                const seconds = parseInt(href.split(':')[1]);
+                                return (
+                                    <button 
+                                        onClick={() => handleSeek(seconds)} 
+                                        className="text-[#6C5DD3] font-bold hover:underline cursor-pointer inline-flex items-center gap-1 bg-[#6C5DD3]/10 px-2 py-0.5 rounded-lg mx-1 align-middle text-xs transition-colors hover:bg-[#6C5DD3]/20"
+                                    >
+                                        <span>▶</span> {children}
+                                    </button>
+                                );
+                            }
+                            return <a href={href} className="text-[#6C5DD3] font-bold hover:underline" {...props}>{children}</a>;
+                        }
                     }}
                 >
-                    {lesson.content}
+                    {processedContent}
                 </ReactMarkdown>
             </div>
         </div>
