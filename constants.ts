@@ -16,7 +16,6 @@ export const COURSE_MODULES: Module[] = [
         id: 'l1-1',
         title: 'Кто управляет миром?',
         description: 'Продажи — это власть. Узнай, почему элита управляет деньгами, а остальные просто работают.',
-        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         content: `
 # Деньги — это энергия
 

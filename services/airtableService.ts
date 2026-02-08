@@ -3,6 +3,10 @@ import { AppConfig, UserProgress, Module, Lesson, Material, Stream, CalendarEven
 import { Logger } from './logger';
 import { Storage } from './storage';
 
+// Hardcoded fallbacks to ensure connection works immediately for everyone
+const DEFAULT_PAT = 'YOUR_AIRTABLE_PAT_TOKEN';
+const DEFAULT_BASE_ID = 'appNbjsegO01M8Y36';
+
 // Helper types matching your Airtable table names
 type TableName = 'Users' | 'Modules' | 'Lessons' | 'Materials' | 'Streams' | 'Events' | 'Scenarios' | 'Notifications' | 'Config' | 'Notebook' | 'Habits' | 'Goals';
 
@@ -12,11 +16,16 @@ class AirtableService {
         const appConfig = Storage.get<AppConfig>('appConfig', {} as any);
         const integ = appConfig?.integrations;
         
+        // Use local storage config if available, otherwise fall back to hardcoded constants
+        const pat = integ?.airtablePat || DEFAULT_PAT;
+        const baseId = integ?.airtableBaseId || DEFAULT_BASE_ID;
+        const tableName = integ?.airtableTableName || 'Users';
+
         return {
-            pat: integ?.airtablePat || '',
-            baseId: integ?.airtableBaseId || '',
+            pat,
+            baseId,
             tables: {
-                Users: integ?.airtableTableName || 'Users',
+                Users: tableName,
                 Modules: 'Modules',
                 Lessons: 'Lessons',
                 Materials: 'Materials',
@@ -363,9 +372,6 @@ class AirtableService {
             imageUrl: module.imageUrl,
             videoUrl: module.videoUrl
         });
-        // Note: Saving individual lessons inside a module update from Admin Dashboard is complex via API 
-        // if we want to maintain the relational link automatically without record IDs.
-        // For this demo, we assume content is mostly managed IN Airtable, or updated individually.
     }
     
     async saveMaterial(mat: Material) {

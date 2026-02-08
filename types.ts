@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export type HomeworkType = 'TEXT' | 'PHOTO' | 'VIDEO' | 'FILE';
@@ -29,21 +28,6 @@ export interface Module {
   pdfUrl?: string;
 }
 
-export type VideoCategory = 'WEBINAR' | 'TUTORIAL' | 'SHORT' | 'INSIGHT';
-
-export interface VideoContent {
-  id: string;
-  title: string;
-  description: string;
-  url: string;
-  thumbnailUrl?: string;
-  category: VideoCategory;
-  duration?: string;
-  date: string;
-  views: number;
-  isLocked?: boolean;
-}
-
 export interface Material {
   id: string;
   title: string;
@@ -58,7 +42,6 @@ export interface Stream {
   date: string; 
   youtubeUrl: string;
   status: 'UPCOMING' | 'LIVE' | 'PAST';
-  category?: VideoCategory;
 }
 
 export interface NotebookEntry {
@@ -69,28 +52,31 @@ export interface NotebookEntry {
   date: string; 
 }
 
+// --- HABIT TRACKER TYPES ---
 export interface Habit {
     id: string;
     title: string;
     description?: string;
     streak: number;
-    completedDates: string[]; 
+    completedDates: string[]; // ISO Date strings (YYYY-MM-DD)
     targetDaysPerWeek: number;
     icon: string;
 }
 
+// --- NEW GOAL TRACKER TYPES ---
 export interface Goal {
     id: string;
     title: string;
     currentValue: number;
     targetValue: number;
-    unit: string; 
+    unit: string; // e.g. '₽', 'km', 'calls'
     deadline?: string;
     isCompleted: boolean;
-    colorStart?: string; 
-    colorEnd?: string;   
+    colorStart?: string; // Gradient start
+    colorEnd?: string;   // Gradient end
 }
 
+// --- SMART NAV ACTIONS ---
 export interface SmartNavAction {
     label: string;
     onClick: () => void;
@@ -141,7 +127,7 @@ export interface UserStats {
 
 export interface UserProgress {
   id?: string;
-  airtableRecordId?: string; 
+  airtableRecordId?: string; // Internal ID for Airtable updates
   telegramId?: string;
   telegramUsername?: string;
   password?: string;
@@ -149,7 +135,7 @@ export interface UserProgress {
   role: UserRole;
   isAuthenticated: boolean;
   registrationDate?: string;
-  lastSyncTimestamp?: number; 
+  lastSyncTimestamp?: number; // For Conflict Resolution
   
   xp: number;
   level: number;
@@ -160,10 +146,12 @@ export interface UserProgress {
   originalPhotoBase64?: string;
   avatarUrl?: string;
   
+  // Customization preferences
   armorStyle?: string;
   backgroundStyle?: string;
   theme: AppTheme;
   
+  // Extended Profile Data
   instagram?: string;
   aboutMe?: string;
   inviteLink?: string;
@@ -171,10 +159,12 @@ export interface UserProgress {
   
   notifications: NotificationSettings;
   
+  // Notebook, Habits & Goals
   notebook: NotebookEntry[];
   habits: Habit[]; 
-  goals: Goal[]; 
+  goals: Goal[]; // NEW
 
+  // New Detailed Stats for Rating System
   stats: UserStats;
 }
 
@@ -185,6 +175,7 @@ export interface AppIntegrations {
   aiModelVersion?: string;
   databaseUrl?: string; 
   inviteBaseUrl?: string;
+  // Airtable Config
   airtablePat?: string;
   airtableBaseId?: string;
   airtableTableName?: string;
@@ -228,8 +219,8 @@ export interface AppConfig {
   appDescription: string;
   primaryColor: string;
   systemInstruction: string;
-  welcomeVideoUrl?: string; 
-  welcomeMessage?: string; 
+  welcomeVideoUrl?: string; // NEW
+  welcomeMessage?: string; // NEW
   integrations: AppIntegrations;
   features: AppFeatures;
   aiConfig: AIConfig;
