@@ -121,7 +121,14 @@ const App: React.FC = () => {
       
       const content = await Backend.fetchAllContent();
       if (content) {
-          if (JSON.stringify(content.modules) !== JSON.stringify(modules)) setModules(content.modules);
+          console.log('📦 Loaded content from backend:', {
+            modules: content.modules?.length || 0,
+            materials: content.materials?.length || 0,
+            streams: content.streams?.length || 0
+          });
+          // Fallback to COURSE_MODULES if Airtable returns empty
+          const newModules = content.modules && content.modules.length > 0 ? content.modules : COURSE_MODULES;
+          if (JSON.stringify(newModules) !== JSON.stringify(modules)) setModules(newModules);
           if (JSON.stringify(content.materials) !== JSON.stringify(materials)) setMaterials(content.materials);
           if (JSON.stringify(content.streams) !== JSON.stringify(streams)) setStreams(content.streams);
           if (JSON.stringify(content.events) !== JSON.stringify(events)) setEvents(content.events);
