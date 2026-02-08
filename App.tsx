@@ -1,23 +1,35 @@
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { Tab, UserProgress, Lesson, AppConfig, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification, Habit, Goal, SmartNavAction } from './types';
 import { COURSE_MODULES, MOCK_EVENTS, MOCK_MATERIALS, MOCK_STREAMS } from './constants';
-import { HomeDashboard } from './components/HomeDashboard';
-import { Profile } from './components/Profile';
-import { LessonView } from './components/LessonView';
-import { AdminDashboard } from './components/AdminDashboard';
-import { SmartNav } from './components/SmartNav';
 import { Storage } from './services/storage';
 import { telegram } from './services/telegramService';
 import { Toast, ToastMessage } from './components/Toast';
-import { SCENARIOS, SalesArena } from './components/SalesArena'; 
-import { NotebookView } from './components/NotebookView';
-import { MaterialsView } from './components/MaterialsView';
-import { VideoHub } from './components/VideoHub';
-import { HabitTracker } from './components/HabitTracker';
-import { ModuleList } from './components/ModuleList';
+import { SmartNav } from './components/SmartNav';
 import { Backend } from './services/backendService';
 import { XPService } from './services/xpService';
+
+// 🚀 LAZY LOADING - Components load only when needed
+const HomeDashboard = lazy(() => import('./components/HomeDashboard').then(m => ({ default: m.HomeDashboard })));
+const Profile = lazy(() => import('./components/Profile').then(m => ({ default: m.Profile })));
+const LessonView = lazy(() => import('./components/LessonView').then(m => ({ default: m.LessonView })));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const SalesArena = lazy(() => import('./components/SalesArena').then(m => ({ default: m.SalesArena })));
+const HabitTracker = lazy(() => import('./components/HabitTracker'));
+const NotebookView = lazy(() => import('./components/NotebookView'));
+const MaterialsView = lazy(() => import('./components/MaterialsView'));
+const VideoHub = lazy(() => import('./components/VideoHub'));
+const ModuleList = lazy(() => import('./components/ModuleList'));
+const SCENARIOS = lazy(() => import('./components/SalesArena').then(m => ({ default: m.SCENARIOS })));
+
+// Loading Spinner
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-screen bg-body">
+    <div className="relative w-16 h-16">
+      <div className="absolute top-0 left-0 w-full h-full border-4 border-primary/20 rounded-full"></div>
+      <div className="absolute top-0 left-0 w-full h-full border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  </div>
+);
 
 const DEFAULT_CONFIG: AppConfig = {
   appName: 'SalesPro: 300 Spartans',
@@ -85,7 +97,7 @@ const App: React.FC = () => {
   const [materials, setMaterials] = useState<Material[]>(() => Storage.get<Material[]>('materials', MOCK_MATERIALS));
   const [streams, setStreams] = useState<Stream[]>(() => Storage.get<Stream[]>('streams', MOCK_STREAMS));
   const [events, setEvents] = useState<CalendarEvent[]>(() => Storage.get<CalendarEvent[]>('events', MOCK_EVENTS));
-  const [scenarios, setScenarios] = useState<ArenaScenario[]>(() => Storage.get<ArenaScenario[]>('scenarios', SCENARIOS));
+  const [scenarios, setScenarios] = useState<ArenaScenario[]>(() => Storage.get<ArenaScenario[]>('scenarios', []));
   const [allUsers, setAllUsers] = useState<UserProgress[]>(() => Storage.get<UserProgress[]>('allUsers', []));
   const [userProgress, setUserProgress] = useState<UserProgress>(() => Storage.get<UserProgress>('progress', DEFAULT_USER));
   const [notifications, setNotifications] = useState<AppNotification[]>(() => Storage.get<AppNotification[]>('local_notifications', []));
@@ -118,7 +130,7 @@ const App: React.FC = () => {
           }
       }
       setNotifications(myNotifs);
-      
+
       const content = await Backend.fetchAllContent();
       if (content) {
           if (JSON.stringify(content.modules) !== JSON.stringify(modules)) setModules(content.modules);
@@ -242,7 +254,7 @@ const App: React.FC = () => {
       Backend.saveCollection('notifications', []); 
       addToast('info', 'История очищена');
   };
-  
+
   const handleUpdateLesson = (updatedLesson: Lesson) => {
       const updatedModules = modules.map(m => {
           if (m.lessons.some(l => l.id === updatedLesson.id)) {
@@ -261,7 +273,7 @@ const App: React.FC = () => {
   const handleCompleteLesson = (lessonId: string, xpBonus: number) => {
       const newXp = userProgress.xp + xpBonus;
       const newLevel = Math.floor(newXp / 1000) + 1;
-      
+
       setUserProgress(prev => ({
           ...prev,
           xp: newXp,
@@ -302,138 +314,140 @@ const App: React.FC = () => {
         {toasts.map(t => <Toast key={t.id} toast={t} onRemove={removeToast} onClick={() => handleNavigate(t.link)} />)}
       </div>
 
-      <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative z-10">
-        {activeLesson ? (
-           <div className="animate-slide-up min-h-full bg-body relative z-10">
-             <LessonView 
-               lesson={activeLesson}
-               isCompleted={userProgress.completedLessonIds.includes(activeLesson.id)}
-               onComplete={handleCompleteLesson}
-               onBack={() => setSelectedLessonId(null)}
-               onNavigate={(id) => setSelectedLessonId(id)}
-               parentModule={activeModule}
-               userProgress={userProgress}
-               onUpdateUser={handleUpdateUser}
-               onUpdateLesson={handleUpdateLesson}
-             />
-           </div>
-        ) : (
-           <div key={activeTab} className="animate-fade-in min-h-full relative z-10">
-              {activeTab === Tab.HOME && (
-                 <HomeDashboard 
-                   onNavigate={setActiveTab}
-                   userProgress={userProgress}
-                   onProfileClick={() => setActiveTab(Tab.PROFILE)}
-                   modules={modules}
-                   materials={materials}
-                   streams={streams}
-                   scenarios={scenarios}
-                   onSelectLesson={(l) => setSelectedLessonId(l.id)}
-                   onUpdateUser={handleUpdateUser}
-                   allUsers={allUsers}
-                   notifications={notifications}
-                   appConfig={appConfig} 
-                 />
-              )}
-              
-              {activeTab === Tab.ARENA && <SalesArena userProgress={userProgress} />}
-              
-              {activeTab === Tab.HABITS && (
-                  <HabitTracker 
-                      habits={userProgress.habits || []}
-                      goals={userProgress.goals || []}
-                      onUpdateHabits={(habits) => handleUpdateUser({ habits })}
-                      onUpdateGoals={(goals) => handleUpdateUser({ goals })}
+      <Suspense fallback={<LoadingSpinner />}>
+        <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative z-10">
+          {activeLesson ? (
+             <div className="animate-slide-up min-h-full bg-body relative z-10">
+               <LessonView 
+                 lesson={activeLesson}
+                 isCompleted={userProgress.completedLessonIds.includes(activeLesson.id)}
+                 onComplete={handleCompleteLesson}
+                 onBack={() => setSelectedLessonId(null)}
+                 onNavigate={(id) => setSelectedLessonId(id)}
+                 parentModule={activeModule}
+                 userProgress={userProgress}
+                 onUpdateUser={handleUpdateUser}
+                 onUpdateLesson={handleUpdateLesson}
+               />
+             </div>
+          ) : (
+             <div key={activeTab} className="animate-fade-in min-h-full relative z-10">
+                {activeTab === Tab.HOME && (
+                   <HomeDashboard 
+                     onNavigate={setActiveTab}
+                     userProgress={userProgress}
+                     onProfileClick={() => setActiveTab(Tab.PROFILE)}
+                     modules={modules}
+                     materials={materials}
+                     streams={streams}
+                     scenarios={scenarios}
+                     onSelectLesson={(l) => setSelectedLessonId(l.id)}
+                     onUpdateUser={handleUpdateUser}
+                     allUsers={allUsers}
+                     notifications={notifications}
+                     appConfig={appConfig} 
+                   />
+                )}
+
+                {activeTab === Tab.ARENA && <SalesArena userProgress={userProgress} />}
+
+                {activeTab === Tab.HABITS && (
+                    <HabitTracker 
+                        habits={userProgress.habits || []}
+                        goals={userProgress.goals || []}
+                        onUpdateHabits={(habits) => handleUpdateUser({ habits })}
+                        onUpdateGoals={(goals) => handleUpdateUser({ goals })}
+                        onXPEarned={handleXPEarned}
+                        onBack={() => setActiveTab(Tab.HOME)}
+                        setNavAction={setNavAction} 
+                        isAuthenticated={userProgress.isAuthenticated}
+                    />
+                )}
+
+                {activeTab === Tab.NOTEBOOK && (
+                   <NotebookView 
+                      entries={userProgress.notebook} 
+                      onUpdate={(e) => handleUpdateUser({ notebook: e })} 
+                      onBack={() => setActiveTab(Tab.HOME)} 
                       onXPEarned={handleXPEarned}
-                      onBack={() => setActiveTab(Tab.HOME)}
                       setNavAction={setNavAction} 
-                      isAuthenticated={userProgress.isAuthenticated}
-                  />
-              )}
+                   />
+                )}
 
-              {activeTab === Tab.NOTEBOOK && (
-                 <NotebookView 
-                    entries={userProgress.notebook} 
-                    onUpdate={(e) => handleUpdateUser({ notebook: e })} 
-                    onBack={() => setActiveTab(Tab.HOME)} 
-                    onXPEarned={handleXPEarned}
-                    setNavAction={setNavAction} 
-                 />
-              )}
+                {activeTab === Tab.MATERIALS && (
+                    <MaterialsView 
+                      materials={materials} 
+                      onBack={() => setActiveTab(Tab.HOME)} 
+                      userProgress={userProgress} 
+                    />
+                )}
 
-              {activeTab === Tab.MATERIALS && (
-                  <MaterialsView 
-                    materials={materials} 
-                    onBack={() => setActiveTab(Tab.HOME)} 
-                    userProgress={userProgress} 
-                  />
-              )}
+                {activeTab === Tab.STREAMS && (
+                    <VideoHub 
+                      streams={streams} 
+                      onBack={() => setActiveTab(Tab.HOME)} 
+                      userProgress={userProgress}
+                      onUpdateUser={handleUpdateUser}
+                      setNavAction={setNavAction} 
+                    />
+                )}
 
-              {activeTab === Tab.STREAMS && (
-                  <VideoHub 
-                    streams={streams} 
-                    onBack={() => setActiveTab(Tab.HOME)} 
-                    userProgress={userProgress}
-                    onUpdateUser={handleUpdateUser}
-                    setNavAction={setNavAction} 
-                  />
-              )}
+                {activeTab === Tab.MODULES && (
+                    <div className="px-6 pt-10 pb-32 max-w-2xl mx-auto space-y-8 animate-fade-in">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setActiveTab(Tab.HOME)} className="w-10 h-10 rounded-2xl bg-surface border border-border-color flex items-center justify-center active:scale-90 transition-transform">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                            </button>
+                            <div>
+                                <span className="text-[#6C5DD3] text-[10px] font-black uppercase tracking-[0.3em] mb-1 block">Full Course</span>
+                                <h1 className="text-3xl font-black text-text-primary tracking-tighter">ВСЕ МОДУЛИ</h1>
+                            </div>
+                        </div>
+                        <ModuleList modules={modules} userProgress={userProgress} onSelectLesson={(l) => setSelectedLessonId(l.id)} onBack={() => setActiveTab(Tab.HOME)} />
+                    </div>
+                )}
 
-              {activeTab === Tab.MODULES && (
-                  <div className="px-6 pt-10 pb-32 max-w-2xl mx-auto space-y-8 animate-fade-in">
-                      <div className="flex items-center gap-4">
-                          <button onClick={() => setActiveTab(Tab.HOME)} className="w-10 h-10 rounded-2xl bg-surface border border-border-color flex items-center justify-center active:scale-90 transition-transform">
-                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
-                          </button>
-                          <div>
-                              <span className="text-[#6C5DD3] text-[10px] font-black uppercase tracking-[0.3em] mb-1 block">Full Course</span>
-                              <h1 className="text-3xl font-black text-text-primary tracking-tighter">ВСЕ МОДУЛИ</h1>
-                          </div>
-                      </div>
-                      <ModuleList modules={modules} userProgress={userProgress} onSelectLesson={(l) => setSelectedLessonId(l.id)} onBack={() => setActiveTab(Tab.HOME)} />
-                  </div>
-              )}
+                {activeTab === Tab.PROFILE && (
+                   <Profile 
+                      userProgress={userProgress} 
+                      onLogout={handleLogout} 
+                      allUsers={allUsers}
+                      onUpdateUser={handleUpdateUser}
+                      events={events}
+                      onLogin={handleLogin}
+                      onNavigate={setActiveTab}
+                      setNavAction={setNavAction} 
+                   />
+                )}
 
-              {activeTab === Tab.PROFILE && (
-                 <Profile 
-                    userProgress={userProgress} 
-                    onLogout={handleLogout} 
-                    allUsers={allUsers}
-                    onUpdateUser={handleUpdateUser}
-                    events={events}
-                    onLogin={handleLogin}
-                    onNavigate={setActiveTab}
-                    setNavAction={setNavAction} 
-                 />
-              )}
-
-              {activeTab === Tab.ADMIN_DASHBOARD && userProgress.role === 'ADMIN' && (
-                  <AdminDashboard 
-                    config={appConfig}
-                    onUpdateConfig={handleUpdateConfig}
-                    modules={modules}
-                    onUpdateModules={handleUpdateModules}
-                    materials={materials}
-                    onUpdateMaterials={handleUpdateMaterials}
-                    streams={streams}
-                    onUpdateStreams={handleUpdateStreams}
-                    events={events}
-                    onUpdateEvents={handleUpdateEvents}
-                    scenarios={scenarios}
-                    onUpdateScenarios={handleUpdateScenarios}
-                    users={allUsers}
-                    onUpdateUsers={handleUpdateAllUsers}
-                    currentUser={userProgress}
-                    activeSubTab={adminSubTab}
-                    onSendBroadcast={handleSendBroadcast}
-                    notifications={notifications}
-                    onClearNotifications={handleClearNotifications}
-                    addToast={addToast}
-                  />
-              )}
-           </div>
-        )}
-      </main>
+                {activeTab === Tab.ADMIN_DASHBOARD && userProgress.role === 'ADMIN' && (
+                    <AdminDashboard 
+                      config={appConfig}
+                      onUpdateConfig={handleUpdateConfig}
+                      modules={modules}
+                      onUpdateModules={handleUpdateModules}
+                      materials={materials}
+                      onUpdateMaterials={handleUpdateMaterials}
+                      streams={streams}
+                      onUpdateStreams={handleUpdateStreams}
+                      events={events}
+                      onUpdateEvents={handleUpdateEvents}
+                      scenarios={scenarios}
+                      onUpdateScenarios={handleUpdateScenarios}
+                      users={allUsers}
+                      onUpdateUsers={handleUpdateAllUsers}
+                      currentUser={userProgress}
+                      activeSubTab={adminSubTab}
+                      onSendBroadcast={handleSendBroadcast}
+                      notifications={notifications}
+                      onClearNotifications={handleClearNotifications}
+                      addToast={addToast}
+                    />
+                )}
+             </div>
+          )}
+        </main>
+      </Suspense>
 
       <SmartNav 
         activeTab={activeTab} 
