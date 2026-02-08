@@ -101,7 +101,7 @@ class BackendService {
       this.notifySync();
   }
 
-  // --- CONTENT SYNC (READ) - OPTIMIZED ---
+  // --- CONTENT SYNC (READ) - FIXED FOR NEW USERS ---
 
   async fetchAllContent() {
       try {
@@ -125,11 +125,12 @@ class BackendService {
               Logger.log(`  ${status} ${mod.title}: ${lessonCount} уроков`);
           });
 
-          // Prefer Airtable data, fallback to cache, then constants
+          // 🔥 FIX: ALWAYS use Airtable data (even if empty [])
+          // Only fallback to cache/constants if Airtable request FAILED (catch block)
           const content = {
-              modules: mods.length > 0 ? mods : Storage.get('courseModules', COURSE_MODULES),
-              materials: mats.length > 0 ? mats : Storage.get('materials', MOCK_MATERIALS),
-              streams: strs.length > 0 ? strs : Storage.get('streams', MOCK_STREAMS),
+              modules: mods,  // ✅ Always use Airtable data
+              materials: mats, // ✅ Always use Airtable data
+              streams: strs,   // ✅ Always use Airtable data
               events: Storage.get('events', MOCK_EVENTS),
               scenarios: Storage.get('scenarios', SCENARIOS),
           };
@@ -145,7 +146,7 @@ class BackendService {
       } catch (e) {
           Logger.error('❌ Airtable fetch failed, using cached data', e);
 
-          // Fallback to cached data
+          // 🔥 FIX: Only use cache/constants if Airtable is UNAVAILABLE
           return {
               modules: Storage.get('courseModules', COURSE_MODULES),
               materials: Storage.get('materials', MOCK_MATERIALS),
@@ -191,7 +192,7 @@ class BackendService {
   // --- CRM ---
 
   async getLeaderboard(): Promise<UserProgress[]> {
-     return Storage.get<UserProgress[]>('allUsers', []);
+    return Storage.get<UserProgress[]>('allUsers', []);
   }
 }
 
