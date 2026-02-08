@@ -1,3 +1,4 @@
+
 import { AppConfig, UserProgress, Module, Lesson, Material, Stream, CalendarEvent, ArenaScenario, AppNotification } from '../types';
 import { Logger } from './logger';
 import { Storage } from './storage';
@@ -39,23 +40,57 @@ class AirtableService {
     }
   }
 
-  // Fetch all modules from Airtable
+  // Fetch all modules with lessons from Airtable
   async fetchModules(): Promise<Module[]> {
     try {
-      const data = await this.request<{ records: any[] }>('Modules');
-      return data.records.map(record => ({
-        id: String(record.fields.id || record.id),
-        title: record.fields.title || 'Untitled Module',
-        description: record.fields.description || '',
-        category: this.mapCategory(record.fields.category),
-        minLevel: record.fields.minLevel || 1,
-        imageUrl: record.fields.imageUrl || this.getImageFromAttachments(record.fields.image),
-        videoUrl: record.fields.videoUrl || this.getVideoFromAttachments(record.fields.video),
-        pdfUrl: '',
-        lessons: []
-      }));
+      // First fetch all lessons
+      const lessonsData = await this.request<{ records: any[] }>('Lessons?sort[0][field]=order&sort[0][direction]=asc');
+      const lessonsMap = new Map<string, Lesson[]>();
+
+      // Group lessons by module
+      lessonsData.records.forEach(record => {
+        const lesson: Lesson = {
+          id: String(record.fields.id || record.id),
+          title: record.fields.title || 'Урок без названия',
+          description: record.fields.description || '',
+          content: record.fields.content || '',
+          xpReward: record.fields.xpReward || 100,
+          homeworkType: (record.fields.homeworkType || 'TEXT') as any,
+          homeworkTask: record.fields.homeworkTask || '',
+          aiGradingInstruction: record.fields.aiGradingInstruction || '',
+          videoUrl: record.fields.videoUrl || ''
+        };
+
+        // Get module links from the lesson
+        const moduleLinks = record.fields.Module || [];
+        moduleLinks.forEach((moduleId: string) => {
+          if (!lessonsMap.has(moduleId)) {
+            lessonsMap.set(moduleId, []);
+          }
+          lessonsMap.get(moduleId)!.push(lesson);
+        });
+      });
+
+      // Now fetch modules and attach lessons
+      const modulesData = await this.request<{ records: any[] }>('Modules');
+      return modulesData.records.map(record => {
+        const moduleId = record.id;
+        const moduleLessons = lessonsMap.get(moduleId) || [];
+
+        return {
+          id: String(record.fields.id || record.id),
+          title: record.fields.title || 'Модуль без названия',
+          description: record.fields.description || '',
+          category: this.mapCategory(record.fields.category),
+          minLevel: record.fields.minLevel || 1,
+          imageUrl: record.fields.imageUrl || this.getImageFromAttachments(record.fields.image),
+          videoUrl: record.fields.videoUrl || this.getVideoFromAttachments(record.fields.video),
+          pdfUrl: '',
+          lessons: moduleLessons
+        };
+      });
     } catch (error) {
-      Logger.error('Failed to fetch modules', error);
+      Logger.error('Failed to fetch modules with lessons', error);
       return [];
     }
   }
@@ -63,10 +98,10 @@ class AirtableService {
   // Fetch all lessons from Airtable
   async fetchLessons(): Promise<Lesson[]> {
     try {
-      const data = await this.request<{ records: any[] }>('Lessons');
+      const data = await this.request<{ records: any[] }>('Lessons?sort[0][field]=order&sort[0][direction]=asc');
       return data.records.map(record => ({
         id: String(record.fields.id || record.id),
-        title: record.fields.title || 'Untitled Lesson',
+        title: record.fields.title || 'Урок без названия',
         description: record.fields.description || '',
         content: record.fields.content || '',
         xpReward: record.fields.xpReward || 100,
@@ -222,4 +257,4 @@ class AirtableService {
 
 // Export both for backward compatibility
 export const airtableService = new AirtableService();
-export const airtable = airtableService;  // Alias for backward compatibility
+export const airtable = airtableService;

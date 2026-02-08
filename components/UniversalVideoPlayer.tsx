@@ -18,19 +18,31 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
   className = ''
 }) => {
   // ReactPlayer supports multiple platforms automatically:
-  // - YouTube
-  // - Vimeo
-  // - Dailymotion
-  // - SoundCloud
-  // - Streamable
-  // - Wistia
-  // - Twitch
-  // - Facebook
-  // - Direct video files (mp4, webm, ogv)
-  // - HLS streams
-  // - DASH streams
+  // - YouTube, Vimeo, Dailymotion, SoundCloud, Streamable, Wistia, Twitch, Facebook
+  // - Direct video files (mp4, webm, ogv), HLS streams, DASH streams
 
-  // Additional manual parsing for Rutube and other platforms
+  // Additional manual parsing for Kinescope, Rutube and other platforms
+
+  // Kinescope.io support
+  const getKinescopeEmbedUrl = (url: string): string | null => {
+    // Kinescope formats:
+    // https://kinescope.io/XXXXXXX
+    // https://kinescope.io/embed/XXXXXXX
+    // https://APP_ID.kinescope.io/XXXXXXX
+    const kinescopeMatch = url.match(/kinescope\.io\/(?:embed\/)?(\w+)/);
+    if (kinescopeMatch) {
+      return `https://kinescope.io/embed/${kinescopeMatch[1]}`;
+    }
+
+    // Custom domain format: https://APP_ID.kinescope.io/VIDEO_ID
+    const customKinescopeMatch = url.match(/([\w-]+)\.kinescope\.io\/(\w+)/);
+    if (customKinescopeMatch) {
+      return `https://${customKinescopeMatch[1]}.kinescope.io/${customKinescopeMatch[2]}`;
+    }
+
+    return null;
+  };
+
   const getRutubeEmbedUrl = (url: string): string | null => {
     const rutubeMatch = url.match(/rutube\.ru\/(?:video|play\/embed)\/(\w+)/);
     if (rutubeMatch) {
@@ -56,13 +68,14 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
   };
 
   // Check for special platforms
+  const kinescopeUrl = getKinescopeEmbedUrl(url);
   const rutubeUrl = getRutubeEmbedUrl(url);
   const okUrl = getOkRuEmbedUrl(url);
   const vkUrl = getVKEmbedUrl(url);
 
-  // If it's Rutube, OK.ru, or VK - use iframe
-  if (rutubeUrl || okUrl || vkUrl) {
-    const embedUrl = rutubeUrl || okUrl || vkUrl;
+  // If it's Kinescope, Rutube, OK.ru, or VK - use iframe
+  if (kinescopeUrl || rutubeUrl || okUrl || vkUrl) {
+    const embedUrl = kinescopeUrl || rutubeUrl || okUrl || vkUrl;
     return (
       <div className={className} style={{ width, height, position: 'relative', paddingTop: '56.25%' }}>
         <iframe
@@ -76,7 +89,7 @@ export const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
             border: 'none',
             borderRadius: '12px'
           }}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen
         />
       </div>
