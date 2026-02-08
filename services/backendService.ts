@@ -30,21 +30,8 @@ async function retryWithBackoff<T>(
 
 export const Backend = {
   async fetchGlobalConfig(fallback: AppConfig): Promise<AppConfig> {
-    try {
-      Logger.log('📄 Fetching global config from Airtable...');
-      const config = await retryWithBackoff(() => 
-        airtableService.fetchGlobalConfig()
-      );
-
-      if (config) {
-        Logger.log('✅ Config loaded from Airtable');
-        return config;
-      }
-    } catch (error) {
-      Logger.log('⚠️ Failed to fetch config from Airtable, using fallback', error);
-    }
-
-    Logger.log('📦 Using fallback config');
+    // fetchGlobalConfig doesn't exist in airtableService - using fallback
+    Logger.log('📦 Using fallback config (Airtable config not implemented)');
     return fallback;
   },
 
@@ -105,13 +92,18 @@ export const Backend = {
     try {
       Logger.log('📄 Syncing user with backend...', { id: user.telegramId, name: user.name });
 
-      const synced = await retryWithBackoff(() => 
-        airtableService.syncUser(user)
+      // Use syncUserProgress instead of syncUser
+      const success = await retryWithBackoff(() => 
+        airtableService.syncUserProgress(user)
       );
 
-      if (synced) {
+      if (success) {
         Logger.log('✅ User synced successfully');
-        return synced;
+        // Try to load fresh data
+        if (user.telegramId) {
+          const freshUser = await airtableService.loadUserProgress(user.telegramId);
+          if (freshUser) return freshUser;
+        }
       }
     } catch (error) {
       Logger.log('⚠️ User sync failed, using local data', error);
@@ -133,61 +125,30 @@ export const Backend = {
   },
 
   async getLeaderboard(): Promise<UserProgress[]> {
-    try {
-      Logger.log('📄 Fetching leaderboard...');
-      const users = await retryWithBackoff(() => 
-        airtableService.getLeaderboard()
-      );
-
-      if (users && users.length > 0) {
-        Logger.log(`✅ Loaded ${users.length} users from leaderboard`);
-        return users;
-      }
-    } catch (error) {
-      Logger.log('⚠️ Failed to fetch leaderboard', error);
-    }
-
+    // getLeaderboard doesn't exist in airtableService
+    Logger.log('📦 getLeaderboard not implemented in Airtable service');
     return [];
   },
 
   async saveCollection(type: string, data: any): Promise<void> {
-    try {
-      Logger.log(`📄 Saving ${type} collection...`);
-      await airtableService.saveCollection(type, data);
-      Logger.log(`✅ ${type} saved`);
-    } catch (error) {
-      Logger.log(`⚠️ Failed to save ${type}`, error);
-    }
+    // saveCollection doesn't exist in airtableService
+    Logger.log(`📦 saveCollection(\"${type}\") not implemented - using LocalStorage only`);
   },
 
   async fetchNotifications(): Promise<AppNotification[]> {
-    try {
-      const notifs = await retryWithBackoff(() => 
-        airtableService.fetchNotifications()
-      );
-      return notifs || [];
-    } catch (error) {
-      Logger.log('⚠️ Failed to fetch notifications', error);
-      return [];
-    }
+    // fetchNotifications doesn't exist in airtableService  
+    Logger.log('📦 fetchNotifications not implemented in Airtable service');
+    return [];
   },
 
   async sendBroadcast(notification: AppNotification): Promise<void> {
-    try {
-      await airtableService.sendBroadcast(notification);
-      Logger.log('✅ Broadcast sent');
-    } catch (error) {
-      Logger.log('⚠️ Failed to send broadcast', error);
-    }
+    // sendBroadcast doesn't exist in airtableService
+    Logger.log('📦 sendBroadcast not implemented in Airtable service');
   },
 
   async saveGlobalConfig(config: AppConfig): Promise<void> {
-    try {
-      await airtableService.saveGlobalConfig(config);
-      Logger.log('✅ Global config saved');
-    } catch (error) {
-      Logger.log('⚠️ Failed to save global config', error);
-    }
+    // saveGlobalConfig doesn't exist in airtableService
+    Logger.log('📦 saveGlobalConfig not implemented - using LocalStorage only');
   },
 
   // Health check для диагностики
