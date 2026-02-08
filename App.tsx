@@ -9,17 +9,17 @@ import { Backend } from './services/backendService';
 import { XPService } from './services/xpService';
 
 // 🚀 LAZY LOADING - Components load only when needed
-const HomeDashboard = lazy(() => import('./components/HomeDashboard').then(m => ({ default: m.HomeDashboard })));
-const Profile = lazy(() => import('./components/Profile').then(m => ({ default: m.Profile })));
-const LessonView = lazy(() => import('./components/LessonView').then(m => ({ default: m.LessonView })));
-const AdminDashboard = lazy(() => import('./components/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
-const SalesArena = lazy(() => import('./components/SalesArena').then(m => ({ default: m.SalesArena })));
+const HomeDashboard = lazy(() => import('./components/HomeDashboard'));
+const Profile = lazy(() => import('./components/Profile'));
+const LessonView = lazy(() => import('./components/LessonView'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
+const SalesArena = lazy(() => import('./components/SalesArena'));
 const HabitTracker = lazy(() => import('./components/HabitTracker'));
 const NotebookView = lazy(() => import('./components/NotebookView'));
 const MaterialsView = lazy(() => import('./components/MaterialsView'));
 const VideoHub = lazy(() => import('./components/VideoHub'));
 const ModuleList = lazy(() => import('./components/ModuleList'));
-const SCENARIOS = lazy(() => import('./components/SalesArena').then(m => ({ default: m.SCENARIOS })));
+// SCENARIOS импортируется вместе с SalesArena, не нужен lazy load
 
 // Loading Spinner
 const LoadingSpinner = () => (
