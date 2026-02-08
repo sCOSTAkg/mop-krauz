@@ -1,7 +1,7 @@
-import { AirtableService } from './airtableService';
 import { UserProgress, AppConfig, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification } from '../types';
 import { COURSE_MODULES, MOCK_MATERIALS, MOCK_STREAMS, MOCK_EVENTS } from '../constants';
 import { Logger } from './logger';
+import { airtableService } from './airtableService';
 
 // Retry configuration
 const RETRY_CONFIG = {
@@ -29,13 +29,11 @@ async function retryWithBackoff<T>(
 }
 
 export const Backend = {
-  airtable: new AirtableService(),
-
   async fetchGlobalConfig(fallback: AppConfig): Promise<AppConfig> {
     try {
-      Logger.log('🔄 Fetching global config from Airtable...');
+      Logger.log('📄 Fetching global config from Airtable...');
       const config = await retryWithBackoff(() => 
-        this.airtable.fetchGlobalConfig()
+        airtableService.fetchGlobalConfig()
       );
 
       if (config) {
@@ -58,19 +56,19 @@ export const Backend = {
     scenarios: ArenaScenario[];
   } | null> {
     try {
-      Logger.log('🔄 Fetching all content from Airtable...');
+      Logger.log('📄 Fetching all content from Airtable...');
 
       // Fetch all data with retry logic
       const [modules, materials, streams] = await Promise.all([
-        retryWithBackoff(() => this.airtable.fetchModules()).catch(e => {
+        retryWithBackoff(() => airtableService.fetchModules()).catch(e => {
           Logger.log('⚠️ Modules fetch failed, using COURSE_MODULES', e);
           return COURSE_MODULES;
         }),
-        retryWithBackoff(() => this.airtable.fetchMaterials()).catch(e => {
+        retryWithBackoff(() => airtableService.fetchMaterials()).catch(e => {
           Logger.log('⚠️ Materials fetch failed, using MOCK_MATERIALS', e);
           return MOCK_MATERIALS;
         }),
-        retryWithBackoff(() => this.airtable.fetchStreams()).catch(e => {
+        retryWithBackoff(() => airtableService.fetchStreams()).catch(e => {
           Logger.log('⚠️ Streams fetch failed, using MOCK_STREAMS', e);
           return MOCK_STREAMS;
         })
@@ -105,10 +103,10 @@ export const Backend = {
 
   async syncUser(user: UserProgress): Promise<UserProgress> {
     try {
-      Logger.log('🔄 Syncing user with backend...', { id: user.telegramId, name: user.name });
+      Logger.log('📄 Syncing user with backend...', { id: user.telegramId, name: user.name });
 
       const synced = await retryWithBackoff(() => 
-        this.airtable.syncUser(user)
+        airtableService.syncUser(user)
       );
 
       if (synced) {
@@ -125,7 +123,7 @@ export const Backend = {
   async saveUser(user: UserProgress): Promise<void> {
     try {
       await retryWithBackoff(() => 
-        this.airtable.saveUser(user)
+        airtableService.syncUserProgress(user)
       );
       Logger.log('✅ User saved to backend');
     } catch (error) {
@@ -136,9 +134,9 @@ export const Backend = {
 
   async getLeaderboard(): Promise<UserProgress[]> {
     try {
-      Logger.log('🔄 Fetching leaderboard...');
+      Logger.log('📄 Fetching leaderboard...');
       const users = await retryWithBackoff(() => 
-        this.airtable.getLeaderboard()
+        airtableService.getLeaderboard()
       );
 
       if (users && users.length > 0) {
@@ -154,8 +152,8 @@ export const Backend = {
 
   async saveCollection(type: string, data: any): Promise<void> {
     try {
-      Logger.log(`🔄 Saving ${type} collection...`);
-      await this.airtable.saveCollection(type, data);
+      Logger.log(`📄 Saving ${type} collection...`);
+      await airtableService.saveCollection(type, data);
       Logger.log(`✅ ${type} saved`);
     } catch (error) {
       Logger.log(`⚠️ Failed to save ${type}`, error);
@@ -165,7 +163,7 @@ export const Backend = {
   async fetchNotifications(): Promise<AppNotification[]> {
     try {
       const notifs = await retryWithBackoff(() => 
-        this.airtable.fetchNotifications()
+        airtableService.fetchNotifications()
       );
       return notifs || [];
     } catch (error) {
@@ -176,10 +174,19 @@ export const Backend = {
 
   async sendBroadcast(notification: AppNotification): Promise<void> {
     try {
-      await this.airtable.sendBroadcast(notification);
+      await airtableService.sendBroadcast(notification);
       Logger.log('✅ Broadcast sent');
     } catch (error) {
       Logger.log('⚠️ Failed to send broadcast', error);
+    }
+  },
+
+  async saveGlobalConfig(config: AppConfig): Promise<void> {
+    try {
+      await airtableService.saveGlobalConfig(config);
+      Logger.log('✅ Global config saved');
+    } catch (error) {
+      Logger.log('⚠️ Failed to save global config', error);
     }
   },
 
@@ -196,7 +203,7 @@ export const Backend = {
     };
 
     try {
-      await this.airtable.fetchModules();
+      await airtableService.fetchModules();
       health.airtable = true;
     } catch (e) {
       Logger.log('❌ Airtable health check failed');
