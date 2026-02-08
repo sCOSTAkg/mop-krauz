@@ -40,7 +40,7 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 1000,
 
       // Minification with Terser
-      minify: 'terser',
+      minify: 'esbuild',  // Встроен в Vite, быстрее чем terser
       terserOptions: {
         compress: {
           drop_console: true,  // Remove console.log in production
