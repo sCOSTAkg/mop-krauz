@@ -1,199 +1,208 @@
-
-import { Storage } from './storage';
-import { UserProgress, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification, AppConfig } from '../types';
+import { AirtableService } from './airtableService';
+import { UserProgress, AppConfig, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification } from '../types';
+import { COURSE_MODULES, MOCK_MATERIALS, MOCK_STREAMS, MOCK_EVENTS } from '../constants';
 import { Logger } from './logger';
-import { COURSE_MODULES, MOCK_EVENTS, MOCK_MATERIALS, MOCK_STREAMS } from '../constants';
-import { SCENARIOS } from '../components/SalesArena';
-import { airtable } from './airtableService';
 
-type ContentTable = 'modules' | 'materials' | 'streams' | 'events' | 'scenarios' | 'notifications' | 'app_settings';
+// Retry configuration
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  retryDelay: 1000,
+  timeout: 10000
+};
 
-const SYNC_CHANNEL_NAME = 'salespro_sync_channel';
+// Helper function for retry logic
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  retries: number = RETRY_CONFIG.maxRetries,
+  delay: number = RETRY_CONFIG.retryDelay
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries === 0) throw error;
 
-class BackendService {
-  private channel: BroadcastChannel;
+    Logger.log(`⚠️ Retry attempt remaining: ${retries}, waiting ${delay}ms...`);
+    await new Promise(resolve => setTimeout(resolve, delay));
 
-  constructor() {
-      this.channel = new BroadcastChannel(SYNC_CHANNEL_NAME);
-  }
-
-  public onSync(callback: () => void) {
-      this.channel.onmessage = (event) => {
-          if (event.data && event.data.type === 'SYNC_UPDATE') {
-              callback();
-          }
-      };
-  }
-
-  private notifySync() {
-      this.channel.postMessage({ type: 'SYNC_UPDATE', timestamp: Date.now() });
-  }
-
-  // --- CACHE MANAGEMENT ---
-
-  clearAllCache() {
-      Logger.log('🧹 Clearing all cache...');
-
-      // Clear Airtable service cache
-      airtable.clearCache();
-
-      // Clear LocalStorage cache (keep user data)
-      Storage.remove('courseModules');
-      Storage.remove('materials');
-      Storage.remove('streams');
-      Storage.remove('events');
-      Storage.remove('scenarios');
-      Storage.remove('local_notifications');
-
-      Logger.log('✅ All cache cleared');
-      this.notifySync();
-  }
-
-  // --- USER SYNC ---
-
-  async syncUser(localUser: UserProgress): Promise<UserProgress> {
-    try {
-        const success = await airtable.syncUserProgress(localUser);
-        if (success) {
-            Logger.log('✅ User synced successfully');
-            return localUser;
-        }
-        return localUser;
-    } catch (e) {
-        Logger.warn('Backend: User Sync failed, using local.', e);
-        return localUser;
-    }
-  }
-
-  async saveUser(user: UserProgress) {
-      const updatedUser = { ...user, lastSyncTimestamp: Date.now() };
-      this.saveUserLocal(updatedUser);
-
-      // Background sync to Airtable
-      airtable.syncUserProgress(updatedUser)
-        .then(success => {
-          if (success) {
-              Logger.log('✅ User synced to Airtable');
-          }
-        })
-        .catch(e => Logger.error("BG Sync Error", e));
-  }
-
-  private saveUserLocal(user: UserProgress) {
-    Storage.set('progress', user);
-    const allUsers = Storage.get<UserProgress[]>('allUsers', []);
-    const idx = allUsers.findIndex(u => u.telegramId === user.telegramId);
-    const newAllUsers = [...allUsers];
-    if (idx >= 0) newAllUsers[idx] = user;
-    else newAllUsers.push(user);
-    Storage.set('allUsers', newAllUsers);
-    this.notifySync(); 
-  }
-
-  // --- CONFIG SYNC ---
-
-  async fetchGlobalConfig(defaultConfig: AppConfig): Promise<AppConfig> {
-      return Storage.get('appConfig', defaultConfig);
-  }
-
-  async saveGlobalConfig(config: AppConfig) {
-      Storage.set('appConfig', config);
-      this.notifySync();
-  }
-
-  // --- CONTENT SYNC (READ) - FIXED FOR NEW USERS ---
-
-  async fetchAllContent() {
-      try {
-          Logger.log('🔄 Fetching all content from Airtable...');
-          const startTime = Date.now();
-
-          // Parallel fetch from Airtable
-          const [mods, mats, strs] = await Promise.all([
-              airtable.fetchModules(),
-              airtable.fetchMaterials(),
-              airtable.fetchStreams()
-          ]);
-
-          const loadTime = Date.now() - startTime;
-          Logger.log(`✅ Content loaded in ${loadTime}ms: ${mods.length} modules, ${mats.length} materials, ${strs.length} streams`);
-
-          // Log module details
-          mods.forEach(mod => {
-              const lessonCount = mod.lessons?.length || 0;
-              const status = lessonCount > 0 ? '✅' : '⚠️';
-              Logger.log(`  ${status} ${mod.title}: ${lessonCount} уроков`);
-          });
-
-          // 🔥 FIX: ALWAYS use Airtable data (even if empty [])
-          // Only fallback to cache/constants if Airtable request FAILED (catch block)
-          const content = {
-              modules: mods,  // ✅ Always use Airtable data
-              materials: mats, // ✅ Always use Airtable data
-              streams: strs,   // ✅ Always use Airtable data
-              events: Storage.get('events', MOCK_EVENTS),
-              scenarios: Storage.get('scenarios', SCENARIOS),
-          };
-
-          // Cache locally for offline access
-          Storage.set('courseModules', content.modules);
-          Storage.set('materials', content.materials);
-          Storage.set('streams', content.streams);
-
-          this.notifySync();
-          return content;
-
-      } catch (e) {
-          Logger.error('❌ Airtable fetch failed, using cached data', e);
-
-          // 🔥 FIX: Only use cache/constants if Airtable is UNAVAILABLE
-          return {
-              modules: Storage.get('courseModules', COURSE_MODULES),
-              materials: Storage.get('materials', MOCK_MATERIALS),
-              streams: Storage.get('streams', MOCK_STREAMS),
-              events: Storage.get('events', MOCK_EVENTS),
-              scenarios: Storage.get('scenarios', SCENARIOS),
-          };
-      }
-  }
-
-  // --- CONTENT SYNC (WRITE) ---
-
-  async saveCollection<T extends { id: string }>(table: ContentTable, items: T[]) {
-      const storageKeyMap: Partial<Record<ContentTable, string>> = {
-          'modules': 'courseModules',
-          'materials': 'materials',
-          'streams': 'streams',
-          'events': 'events',
-          'scenarios': 'scenarios',
-          'notifications': 'local_notifications'
-      };
-
-      const key = storageKeyMap[table];
-      if (key) {
-          Storage.set(key, items);
-          this.notifySync();
-          Logger.log(`💾 Saved ${items.length} ${table} to local storage`);
-      }
-  }
-
-  // --- NOTIFICATIONS ---
-
-  async fetchNotifications(): Promise<AppNotification[]> {
-      return Storage.get<AppNotification[]>('local_notifications', []);
-  }
-
-  async sendBroadcast(notification: AppNotification) {
-      const current = Storage.get<AppNotification[]>('local_notifications', []);
-      Storage.set('local_notifications', [notification, ...current]);
-      this.notifySync();
-  }
-
-  // --- CRM ---
-
-  async getLeaderboard(): Promise<UserProgress[]> {
-    return Storage.get<UserProgress[]>('allUsers', []);
+    return retryWithBackoff(fn, retries - 1, delay * 1.5);
   }
 }
 
-export const Backend = new BackendService();
+export const Backend = {
+  airtable: new AirtableService(),
+
+  async fetchGlobalConfig(fallback: AppConfig): Promise<AppConfig> {
+    try {
+      Logger.log('🔄 Fetching global config from Airtable...');
+      const config = await retryWithBackoff(() => 
+        this.airtable.fetchGlobalConfig()
+      );
+
+      if (config) {
+        Logger.log('✅ Config loaded from Airtable');
+        return config;
+      }
+    } catch (error) {
+      Logger.log('⚠️ Failed to fetch config from Airtable, using fallback', error);
+    }
+
+    Logger.log('📦 Using fallback config');
+    return fallback;
+  },
+
+  async fetchAllContent(): Promise<{
+    modules: Module[];
+    materials: Material[];
+    streams: Stream[];
+    events: CalendarEvent[];
+    scenarios: ArenaScenario[];
+  } | null> {
+    try {
+      Logger.log('🔄 Fetching all content from Airtable...');
+
+      // Fetch all data with retry logic
+      const [modules, materials, streams] = await Promise.all([
+        retryWithBackoff(() => this.airtable.fetchModules()).catch(e => {
+          Logger.log('⚠️ Modules fetch failed, using COURSE_MODULES', e);
+          return COURSE_MODULES;
+        }),
+        retryWithBackoff(() => this.airtable.fetchMaterials()).catch(e => {
+          Logger.log('⚠️ Materials fetch failed, using MOCK_MATERIALS', e);
+          return MOCK_MATERIALS;
+        }),
+        retryWithBackoff(() => this.airtable.fetchStreams()).catch(e => {
+          Logger.log('⚠️ Streams fetch failed, using MOCK_STREAMS', e);
+          return MOCK_STREAMS;
+        })
+      ]);
+
+      // Events and scenarios fallback to mocks for now
+      const events = MOCK_EVENTS;
+      const scenarios = [];
+
+      Logger.log('✅ Content loaded:', {
+        modules: modules.length,
+        materials: materials.length,
+        streams: streams.length,
+        events: events.length,
+        scenarios: scenarios.length
+      });
+
+      return { modules, materials, streams, events, scenarios };
+
+    } catch (error) {
+      Logger.log('❌ Failed to fetch content, using all fallbacks', error);
+
+      return {
+        modules: COURSE_MODULES,
+        materials: MOCK_MATERIALS,
+        streams: MOCK_STREAMS,
+        events: MOCK_EVENTS,
+        scenarios: []
+      };
+    }
+  },
+
+  async syncUser(user: UserProgress): Promise<UserProgress> {
+    try {
+      Logger.log('🔄 Syncing user with backend...', { id: user.telegramId, name: user.name });
+
+      const synced = await retryWithBackoff(() => 
+        this.airtable.syncUser(user)
+      );
+
+      if (synced) {
+        Logger.log('✅ User synced successfully');
+        return synced;
+      }
+    } catch (error) {
+      Logger.log('⚠️ User sync failed, using local data', error);
+    }
+
+    return user;
+  },
+
+  async saveUser(user: UserProgress): Promise<void> {
+    try {
+      await retryWithBackoff(() => 
+        this.airtable.saveUser(user)
+      );
+      Logger.log('✅ User saved to backend');
+    } catch (error) {
+      Logger.log('⚠️ Failed to save user to backend', error);
+      // Data is still in LocalStorage, so not critical
+    }
+  },
+
+  async getLeaderboard(): Promise<UserProgress[]> {
+    try {
+      Logger.log('🔄 Fetching leaderboard...');
+      const users = await retryWithBackoff(() => 
+        this.airtable.getLeaderboard()
+      );
+
+      if (users && users.length > 0) {
+        Logger.log(`✅ Loaded ${users.length} users from leaderboard`);
+        return users;
+      }
+    } catch (error) {
+      Logger.log('⚠️ Failed to fetch leaderboard', error);
+    }
+
+    return [];
+  },
+
+  async saveCollection(type: string, data: any): Promise<void> {
+    try {
+      Logger.log(`🔄 Saving ${type} collection...`);
+      await this.airtable.saveCollection(type, data);
+      Logger.log(`✅ ${type} saved`);
+    } catch (error) {
+      Logger.log(`⚠️ Failed to save ${type}`, error);
+    }
+  },
+
+  async fetchNotifications(): Promise<AppNotification[]> {
+    try {
+      const notifs = await retryWithBackoff(() => 
+        this.airtable.fetchNotifications()
+      );
+      return notifs || [];
+    } catch (error) {
+      Logger.log('⚠️ Failed to fetch notifications', error);
+      return [];
+    }
+  },
+
+  async sendBroadcast(notification: AppNotification): Promise<void> {
+    try {
+      await this.airtable.sendBroadcast(notification);
+      Logger.log('✅ Broadcast sent');
+    } catch (error) {
+      Logger.log('⚠️ Failed to send broadcast', error);
+    }
+  },
+
+  // Health check для диагностики
+  async healthCheck(): Promise<{
+    airtable: boolean;
+    supabase: boolean;
+    timestamp: string;
+  }> {
+    const health = {
+      airtable: false,
+      supabase: false,
+      timestamp: new Date().toISOString()
+    };
+
+    try {
+      await this.airtable.fetchModules();
+      health.airtable = true;
+    } catch (e) {
+      Logger.log('❌ Airtable health check failed');
+    }
+
+    Logger.log('🏥 Health check:', health);
+    return health;
+  }
+};
