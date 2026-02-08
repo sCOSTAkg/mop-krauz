@@ -13,48 +13,8 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
-      sourcemap: false,
-
-      // 🚀 CODE SPLITTING CONFIGURATION
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            // React core in separate chunk (~130 KB)
-            'react-vendor': ['react', 'react-dom'],
-
-            // Google Gemini AI in separate chunk (~50 KB)
-            'ai-vendor': ['@google/genai'],
-
-            // Media players in separate chunk (~120 KB)
-            'media-vendor': ['react-player', 'react-markdown']
-          },
-
-          // Generate readable chunk names with hashes for caching
-          chunkFileNames: 'assets/[name]-[hash].js',
-          entryFileNames: 'assets/[name]-[hash].js',
-          assetFileNames: 'assets/[name]-[hash].[ext]'
-        }
-      },
-
-      // Increase chunk size warning limit
-      chunkSizeWarningLimit: 1000,
-
-      // Minification with Terser
-      minify: 'esbuild',  // Встроен в Vite, быстрее чем terser
-      terserOptions: {
-        compress: {
-          drop_console: true,  // Remove console.log in production
-          drop_debugger: true
-        }
-      }
+      sourcemap: false
     },
-
-    // Optimize dependencies
-    optimizeDeps: {
-      include: ['react', 'react-dom'],
-      exclude: []
-    },
-
     server: {
       host: true
     }
