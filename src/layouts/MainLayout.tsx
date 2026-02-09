@@ -11,28 +11,15 @@ import { Tab } from '../types';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const ROUTE_TO_TAB: Record<string, Tab> = {
-  '/': Tab.HOME,
-  '/modules': Tab.MODULES,
-  '/materials': Tab.MATERIALS,
-  '/rating': Tab.RATING,
-  '/arena': Tab.ARENA,
-  '/streams': Tab.STREAMS,
-  '/notebook': Tab.NOTEBOOK,
-  '/habits': Tab.HABITS,
-  '/profile': Tab.PROFILE,
+  '/': Tab.HOME, '/modules': Tab.MODULES, '/materials': Tab.MATERIALS,
+  '/rating': Tab.RATING, '/arena': Tab.ARENA, '/streams': Tab.STREAMS,
+  '/notebook': Tab.NOTEBOOK, '/habits': Tab.HABITS, '/profile': Tab.PROFILE,
   '/admin': Tab.ADMIN_DASHBOARD,
 };
-
 const TAB_TO_ROUTE: Record<Tab, string> = {
-  [Tab.HOME]: '/',
-  [Tab.MODULES]: '/modules',
-  [Tab.MATERIALS]: '/materials',
-  [Tab.RATING]: '/rating',
-  [Tab.ARENA]: '/arena',
-  [Tab.STREAMS]: '/streams',
-  [Tab.NOTEBOOK]: '/notebook',
-  [Tab.HABITS]: '/habits',
-  [Tab.PROFILE]: '/profile',
+  [Tab.HOME]: '/', [Tab.MODULES]: '/modules', [Tab.MATERIALS]: '/materials',
+  [Tab.RATING]: '/rating', [Tab.ARENA]: '/arena', [Tab.STREAMS]: '/streams',
+  [Tab.NOTEBOOK]: '/notebook', [Tab.HABITS]: '/habits', [Tab.PROFILE]: '/profile',
   [Tab.ADMIN_DASHBOARD]: '/admin',
 };
 
@@ -42,22 +29,15 @@ export const MainLayout: React.FC = () => {
   const state = useAppState();
   const { syncData } = useSync({
     userProgressRef: state.userProgressRef,
-    setModules: state.setModules,
-    setMaterials: state.setMaterials,
-    setStreams: state.setStreams,
-    setEvents: state.setEvents,
-    setScenarios: state.setScenarios,
-    setNotifications: state.setNotifications,
-    setAllUsers: state.setAllUsers,
-    setUserProgress: state.setUserProgress,
+    setModules: state.setModules, setMaterials: state.setMaterials,
+    setStreams: state.setStreams, setEvents: state.setEvents,
+    setScenarios: state.setScenarios, setNotifications: state.setNotifications,
+    setAllUsers: state.setAllUsers, setUserProgress: state.setUserProgress,
   });
   const { handleLogin } = useAuth({
-    userProgress: state.userProgress,
-    setUserProgress: state.setUserProgress,
-    syncData,
-    addToast: state.addToast,
+    userProgress: state.userProgress, setUserProgress: state.setUserProgress,
+    syncData, addToast: state.addToast,
   });
-
   const effectiveTheme = useTheme(state.userProgress.theme);
   useAutoSave(state.userProgress);
 
@@ -65,15 +45,20 @@ export const MainLayout: React.FC = () => {
   const setActiveTab = (tab: Tab) => navigate(TAB_TO_ROUTE[tab] || '/');
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-body text-text-primary transition-colors duration-300 overflow-hidden relative">
+    <div className="flex flex-col h-[100dvh] bg-body/50 text-text-primary transition-colors duration-500 overflow-hidden relative">
+      {/* Toasts */}
       <div className="fixed top-[var(--safe-top)] left-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
         {state.toasts.map(t => (
           <Toast key={t.id} toast={t} onRemove={state.removeToast} onClick={() => state.handleNavigate(t.link)} />
         ))}
       </div>
-      <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative z-10">
+
+      {/* Main content with page transition */}
+      <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative z-10" key={location.pathname}>
         <Outlet context={{ ...state, setActiveTab, handleLogin, syncData, effectiveTheme }} />
       </main>
+
+      {/* Navigation */}
       <SmartNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
