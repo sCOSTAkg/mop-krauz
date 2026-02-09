@@ -25,10 +25,10 @@ function applyTheme(effective: 'LIGHT' | 'DARK') {
 
   if (effective === 'DARK') {
     root.classList.add('dark');
-    meta?.setAttribute('content', '#0A0A0F');
+    meta?.setAttribute('content', '#09090B');
     if (telegram.isAvailable) {
-      telegram.setBackgroundColor('#0A0A0F');
-      telegram.setHeaderColor('#0A0A0F');
+      telegram.setBackgroundColor('#09090B');
+      telegram.setHeaderColor('#09090B');
     }
   } else {
     root.classList.remove('dark');
