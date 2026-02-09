@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AppTheme } from '../types';
 import { telegram } from '../services/telegramService';
 
