@@ -16,14 +16,14 @@ type AuthStep = 'CHECKING' | 'AUTH_FORM' | 'IDENTITY' | 'DOSSIER' | 'SCANNING' |
 export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
   const [step, setStep] = useState<AuthStep>('CHECKING');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
-  
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
   // Identity Data
   const [realName, setRealName] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
+
   // Dossier Data (Split into parts for UX)
   const [dossierStep, setDossierStep] = useState<number>(0); // 0: Bio, 1: Social, 2: Goals
   const [dossier, setDossier] = useState<UserDossier>({
@@ -40,7 +40,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
   });
 
   const defaultArmorStyle = 'Classic Bronze';
-  
+
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [isShake, setIsShake] = useState(false);
   const [loadingText, setLoadingText] = useState('');
@@ -52,7 +52,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
         if (telegram.isAvailable && telegram.user) {
             const tgUser = telegram.user;
             const tgId = tgUser.id.toString();
-            setLoadingText('АВТОМАТИЧЕСКАЯ ИДЕНТИФИКАЦИЯ...');
+            setLoadingText('Автоматическая идентификация...');
             await new Promise(r => setTimeout(r, 600));
 
             let user = existingUsers.find(u => u.telegramId === tgId);
@@ -66,11 +66,11 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
 
             if (user) {
                 telegram.haptic('success');
-                onLogin({ 
-                    ...user, 
-                    telegramId: tgId, 
+                onLogin({
+                    ...user,
+                    telegramId: tgId,
                     isAuthenticated: true,
-                    isRegistration: false 
+                    isRegistration: false
                 });
             } else {
                 telegram.haptic('light');
@@ -124,21 +124,21 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
     let hasError = false;
 
     // Username Validation
-    if (!cleanUsername) { 
-        handleError('username', 'Введите Username'); 
-        hasError = true; 
+    if (!cleanUsername) {
+        handleError('username', 'Введите Username');
+        hasError = true;
     } else if (cleanUsername.length < 3) {
         handleError('username', 'Минимум 3 символа');
         hasError = true;
     }
 
     // Password Validation
-    if (!cleanPassword) { 
-        handleError('password', 'Введите пароль'); 
-        hasError = true; 
-    } else if (cleanPassword.length < 4) { 
-        handleError('password', 'Пароль слишком короткий (мин. 4)'); 
-        hasError = true; 
+    if (!cleanPassword) {
+        handleError('password', 'Введите пароль');
+        hasError = true;
+    } else if (cleanPassword.length < 4) {
+        handleError('password', 'Пароль слишком короткий (мин. 4)');
+        hasError = true;
     }
 
     if (hasError) return;
@@ -152,7 +152,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
             telegramUsername: 'admin',
             isRegistration: false,
             avatarUrl: 'https://ui-avatars.com/api/?name=Admin&background=1F2128&color=fff',
-            armorStyle: 'Golden God' 
+            armorStyle: 'Golden God'
         });
         return;
     }
@@ -160,7 +160,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
     if (isRegisterMode) {
         const userExists = existingUsers.some(u => u.telegramUsername?.toLowerCase() === cleanUsername.toLowerCase());
         if (userExists) { handleError('username', 'Пользователь уже существует'); return; }
-        
+
         telegram.haptic('light');
         setStep('IDENTITY');
     } else {
@@ -176,7 +176,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
   const handleIdentitySubmit = () => {
     if (!realName.trim()) { handleError('name', 'Введите имя'); return; }
     if (!selectedImage) { handleError('photo', 'Загрузите фото'); return; }
-    
+
     setStep('DOSSIER'); // Move to Questionaire instead of scanning
     setDossierStep(0);
     telegram.haptic('success');
@@ -196,7 +196,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
       else if (dossierStep === 1) {
           if (!dossier.workExperience) { handleError('workExperience', 'Заполните опыт'); return; }
           if (!dossier.incomeGoal) { handleError('incomeGoal', 'Укажите цель'); return; }
-          
+
           setDossierStep(2);
           telegram.haptic('selection');
       }
@@ -206,7 +206,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
           if (!dossier.motivation) { handleError('motivation', 'Заполните поле'); return; }
 
           setStep('SCANNING');
-          setLoadingText('АНАЛИЗ ДОСЬЕ И БИОМЕТРИИ...');
+          setLoadingText('Анализ данных...');
           setTimeout(() => {
               telegram.haptic('medium');
               handleFinalize();
@@ -219,8 +219,8 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
     if (file) {
       if (file.size > 5 * 1024 * 1024) { handleError('photo', 'Макс. размер 5MB'); return; }
       const reader = new FileReader();
-      reader.onloadend = () => { 
-          setSelectedImage(reader.result as string); 
+      reader.onloadend = () => {
+          setSelectedImage(reader.result as string);
           setErrors(prev => ({...prev, photo: ''}));
           telegram.haptic('selection');
       };
@@ -230,7 +230,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
 
   const handleFinalize = async () => {
     setStep('FINALIZING');
-    const loadingMessages = ['СБОРКА ЭКИПИРОВКИ...', 'ГЕНЕРАЦИЯ АВАТАРА...', 'ЗАПИСЬ В РЕЕСТР...'];
+    const loadingMessages = ['Генерация аватара...', 'Сохранение профиля...', 'Почти готово...'];
     let msgIdx = 0;
     const interval = setInterval(() => {
         setLoadingText(loadingMessages[msgIdx % loadingMessages.length]);
@@ -242,19 +242,19 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
         const avatarUrl = await generateSpartanAvatar(base64Data, 1, defaultArmorStyle);
         clearInterval(interval);
         telegram.haptic('success');
-        
+
         const cleanUsername = username.trim().replace('@', '');
         const inviteLink = `https://t.me/SalesProBot?start=ref_${cleanUsername}`;
         const tgId = telegram.user?.id.toString();
 
-        const newUser: any = { 
-            role: 'STUDENT', 
-            name: realName, 
+        const newUser: any = {
+            role: 'STUDENT',
+            name: realName,
             telegramUsername: cleanUsername,
-            telegramId: tgId, 
+            telegramId: tgId,
             password: password.trim() || 'tg_auth',
-            originalPhoto: base64Data, 
-            avatarUrl, 
+            originalPhoto: base64Data,
+            avatarUrl,
             armorStyle: defaultArmorStyle,
             inviteLink: inviteLink,
             dossier: dossier,
@@ -264,159 +264,159 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
         await Backend.saveUser(newUser);
         onLogin(newUser);
 
-    } catch (e) { 
+    } catch (e) {
         clearInterval(interval);
-        handleError('global', 'Ошибка сети. Попробуйте еще раз.'); 
+        handleError('global', 'Ошибка сети. Попробуйте еще раз.');
         setStep('IDENTITY'); // Go back to start if failed
     }
   };
 
   const renderChecking = () => (
-      <div className="flex flex-col items-center justify-center animate-pulse py-20">
-           <div className="w-16 h-16 border-4 border-[#6C5DD3] border-t-transparent rounded-full animate-spin mb-4"></div>
-           <p className="text-[#6C5DD3] font-black text-xs uppercase tracking-[0.2em]">{loadingText || 'ПОИСК ПРОФИЛЯ...'}</p>
+      <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+           <div className="w-12 h-12 border-3 border-[#6C5DD3] border-t-transparent rounded-full animate-spin mb-4"></div>
+           <p className="text-text-secondary font-medium text-sm">{loadingText || 'Поиск профиля...'}</p>
       </div>
   );
 
   const renderAuthForm = () => (
     <div className={`w-full max-w-sm mx-auto animate-fade-in ${isShake ? 'animate-shake' : ''}`}>
-       <div className="mb-10 text-center">
-           <div className="w-16 h-16 bg-[#6C5DD3]/10 rounded-2xl flex items-center justify-center text-3xl mb-4 mx-auto text-[#6C5DD3] border border-[#6C5DD3]/20 shadow-lg">
+       <div className="mb-8 text-center">
+           <div className="w-14 h-14 bg-[#6C5DD3]/10 rounded-2xl flex items-center justify-center text-2xl mb-4 mx-auto">
                🛡️
            </div>
-           <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">ДОСТУП</h2>
-           <p className="text-slate-500 dark:text-white/50 text-sm font-medium">Для доступа к полному функционалу и сохранению прогресса войдите в систему.</p>
+           <h2 className="text-2xl font-bold text-text-primary mb-2">Вход</h2>
+           <p className="text-text-secondary text-sm">Войдите для доступа к курсу и сохранения прогресса.</p>
        </div>
 
-       <div className="bg-white dark:bg-[#1F2128] p-1.5 rounded-2xl flex relative mb-8 ring-1 ring-slate-200 dark:ring-white/10 shadow-sm">
-          <div 
-             className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-[#6C5DD3] rounded-xl shadow-lg transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isRegisterMode ? 'left-[calc(50%+3px)]' : 'left-1.5'}`}
+       <div className="bg-body p-1 rounded-xl flex relative mb-6 border border-border-color">
+          <div
+             className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#6C5DD3] rounded-lg transition-all duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] ${isRegisterMode ? 'left-[calc(50%+2px)]' : 'left-1'}`}
           ></div>
-          <button 
-             onClick={() => { setIsRegisterMode(false); setErrors({}); }} 
-             className={`flex-1 py-3 text-xs font-black uppercase tracking-widest relative z-10 transition-colors ${!isRegisterMode ? 'text-white' : 'text-slate-400'}`}
+          <button
+             onClick={() => { setIsRegisterMode(false); setErrors({}); }}
+             className={`flex-1 py-2.5 text-xs font-semibold relative z-10 transition-colors ${!isRegisterMode ? 'text-white' : 'text-text-secondary'}`}
           >
              Вход
           </button>
-          <button 
-             onClick={() => { setIsRegisterMode(true); setErrors({}); }} 
-             className={`flex-1 py-3 text-xs font-black uppercase tracking-widest relative z-10 transition-colors ${isRegisterMode ? 'text-white' : 'text-slate-400'}`}
+          <button
+             onClick={() => { setIsRegisterMode(true); setErrors({}); }}
+             className={`flex-1 py-2.5 text-xs font-semibold relative z-10 transition-colors ${isRegisterMode ? 'text-white' : 'text-text-secondary'}`}
           >
              Регистрация
           </button>
        </div>
 
-       <div className="space-y-5">
-           <div className="space-y-1">
-               <label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Telegram Username</label>
-               <div className={`flex items-center bg-white dark:bg-[#1F2128] border ${errors.username ? 'border-red-500' : 'border-slate-200 dark:border-white/5 focus-within:border-[#6C5DD3]'} rounded-2xl px-4 transition-colors`}>
-                   <span className="text-slate-500">@</span>
-                   <input 
-                     value={username} 
+       <div className="space-y-4">
+           <div className="space-y-1.5">
+               <label className="text-xs font-medium text-text-secondary ml-1">Telegram Username</label>
+               <div className={`flex items-center bg-body border ${errors.username ? 'border-[#FF3B30]' : 'border-border-color focus-within:border-[#6C5DD3]'} rounded-xl px-4 transition-colors`}>
+                   <span className="text-text-secondary">@</span>
+                   <input
+                     value={username}
                      onChange={handleUsernameChange}
-                     className="w-full bg-transparent py-4 pl-2 text-slate-900 dark:text-white font-bold outline-none placeholder:text-slate-400 dark:placeholder:text-white/20"
+                     className="w-full bg-transparent py-3.5 pl-2 text-text-primary font-medium outline-none placeholder:text-text-secondary"
                      placeholder="username"
                    />
                </div>
            </div>
 
-           <div className="space-y-1">
-               <label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Пароль</label>
-               <div className={`flex items-center bg-white dark:bg-[#1F2128] border ${errors.password ? 'border-red-500' : 'border-slate-200 dark:border-white/5 focus:border-[#6C5DD3]'} rounded-2xl px-4 transition-colors`}>
-                   <span className="text-slate-500">🔒</span>
-                   <input 
+           <div className="space-y-1.5">
+               <label className="text-xs font-medium text-text-secondary ml-1">Пароль</label>
+               <div className={`flex items-center bg-body border ${errors.password ? 'border-[#FF3B30]' : 'border-border-color focus-within:border-[#6C5DD3]'} rounded-xl px-4 transition-colors`}>
+                   <span className="text-text-secondary">🔒</span>
+                   <input
                      type="password"
-                     value={password} 
+                     value={password}
                      onChange={handlePasswordChange}
-                     className="w-full bg-transparent py-4 pl-2 text-slate-900 dark:text-white font-bold outline-none placeholder:text-slate-400 dark:placeholder:text-white/20"
+                     className="w-full bg-transparent py-3.5 pl-2 text-text-primary font-medium outline-none placeholder:text-text-secondary"
                      placeholder="••••••••"
                    />
                </div>
            </div>
-           
+
            {(errors.username || errors.password) && (
-               <p className="text-red-500 text-xs font-bold text-center animate-fade-in">{errors.username || errors.password}</p>
+               <p className="text-[#FF3B30] text-xs font-medium text-center animate-fade-in">{errors.username || errors.password}</p>
            )}
 
-           <Button 
-                onClick={handleAuthSubmit} 
-                fullWidth 
-                className="!mt-8 !py-4 !rounded-2xl !bg-slate-900 !text-white dark:!bg-white dark:!text-black hover:!bg-slate-800 dark:hover:!bg-slate-200"
+           <Button
+                onClick={handleAuthSubmit}
+                fullWidth
+                className="!mt-6 !py-3.5 !rounded-xl !bg-[#6C5DD3] !text-white"
            >
-              {isRegisterMode ? 'ДАЛЕЕ' : 'ВОЙТИ'}
+              {isRegisterMode ? 'Далее' : 'Войти'}
            </Button>
        </div>
     </div>
   );
 
   const renderIdentity = () => (
-      <div className={`w-full max-w-sm mx-auto animate-slide-in ${isShake ? 'animate-shake' : ''}`}>
-           <div className="mb-8 text-center">
-              <div className="w-12 h-12 bg-[#6C5DD3]/10 text-[#6C5DD3] rounded-full flex items-center justify-center text-2xl mx-auto mb-3 border border-[#6C5DD3]/20">
+      <div className={`w-full max-w-sm mx-auto animate-fade-in ${isShake ? 'animate-shake' : ''}`}>
+           <div className="mb-6 text-center">
+              <div className="w-12 h-12 bg-[#6C5DD3]/10 text-[#6C5DD3] rounded-2xl flex items-center justify-center text-xl mx-auto mb-3">
                  🪪
               </div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white">ЛИЧНОЕ ДЕЛО</h2>
-              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+              <h2 className="text-xl font-bold text-text-primary">Личные данные</h2>
+              <p className="text-text-secondary text-sm mt-1">
                  Этап 1: Идентификация
               </p>
           </div>
 
-          <div className="space-y-6">
-              <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-3">ФИО / Позывной</label>
-                  <input 
-                    value={realName} 
-                    onChange={e => setRealName(e.target.value)} 
-                    className={`w-full bg-white dark:bg-[#1F2128] border ${errors.name ? 'border-red-500' : 'border-slate-200 dark:border-white/10 focus:border-[#6C5DD3]'} rounded-2xl py-4 px-5 text-slate-900 dark:text-white font-bold outline-none transition-colors`}
+          <div className="space-y-5">
+              <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-text-secondary ml-1">ФИО / Позывной</label>
+                  <input
+                    value={realName}
+                    onChange={e => setRealName(e.target.value)}
+                    className={`w-full bg-body border ${errors.name ? 'border-[#FF3B30]' : 'border-border-color focus:border-[#6C5DD3]'} rounded-xl py-3.5 px-4 text-text-primary font-medium outline-none transition-colors`}
                     placeholder="Имя Фамилия"
                   />
               </div>
 
-              <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-3">Фото профиля (Для Аватара)</label>
-                  <div 
-                    onClick={() => fileInputRef.current?.click()} 
+              <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-text-secondary ml-1">Фото профиля</label>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
                     className={`
-                        w-full h-40 rounded-3xl bg-white dark:bg-[#1F2128] border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all group relative overflow-hidden
-                        ${errors.photo ? 'border-red-500' : 'border-slate-200 dark:border-white/10 hover:border-[#6C5DD3] hover:bg-[#6C5DD3]/5'}
+                        w-full h-36 rounded-2xl bg-body border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all group relative overflow-hidden
+                        ${errors.photo ? 'border-[#FF3B30]' : 'border-border-color hover:border-[#6C5DD3] hover:bg-[#6C5DD3]/5'}
                     `}
                   >
                       {selectedImage ? (
                           <img src={selectedImage} className="absolute inset-0 w-full h-full object-cover opacity-80" />
                       ) : (
                           <>
-                              <div className="w-12 h-12 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center text-2xl mb-2 group-hover:scale-110 transition-transform text-slate-400 group-hover:text-[#6C5DD3]">📸</div>
-                              <span className="text-xs font-bold text-slate-500 uppercase">Загрузить фото</span>
+                              <div className="w-10 h-10 bg-card rounded-full flex items-center justify-center text-xl mb-2 group-hover:scale-110 transition-transform">📸</div>
+                              <span className="text-xs font-medium text-text-secondary">Загрузить фото</span>
                           </>
                       )}
                       <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
                   </div>
               </div>
           </div>
-          
-          <div className="flex gap-3 mt-10">
+
+          <div className="flex gap-3 mt-8">
               {(!telegram.isAvailable || !telegram.user) && (
-                  <button onClick={() => setStep('AUTH_FORM')} className="w-14 h-14 flex items-center justify-center rounded-2xl bg-white dark:bg-[#1F2128] text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-200 dark:border-white/5">
-                      ←
+                  <button onClick={() => setStep('AUTH_FORM')} className="w-12 h-12 flex items-center justify-center rounded-xl bg-body text-text-secondary hover:text-text-primary transition-colors border border-border-color">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                   </button>
               )}
-              <Button onClick={handleIdentitySubmit} fullWidth className="!rounded-2xl !bg-slate-900 !text-white dark:!bg-white dark:!text-black">
-                  ДАЛЕЕ
+              <Button onClick={handleIdentitySubmit} fullWidth className="!rounded-xl !bg-[#6C5DD3] !text-white">
+                  Далее
               </Button>
           </div>
       </div>
   );
 
   const renderDossier = () => (
-      <div className={`w-full max-w-sm mx-auto animate-slide-in flex flex-col h-[70vh] ${isShake ? 'animate-shake' : ''}`}>
-           <div className="flex-shrink-0 mb-6 text-center">
+      <div className={`w-full max-w-sm mx-auto animate-fade-in flex flex-col h-[70vh] ${isShake ? 'animate-shake' : ''}`}>
+           <div className="flex-shrink-0 mb-5 text-center">
               <div className="flex justify-center gap-2 mb-4">
                   {[0, 1, 2].map(i => (
-                      <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i <= dossierStep ? 'w-8 bg-[#6C5DD3]' : 'w-4 bg-slate-200 dark:bg-white/10'}`}></div>
+                      <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i <= dossierStep ? 'w-8 bg-[#6C5DD3]' : 'w-4 bg-border-color'}`}></div>
                   ))}
               </div>
-              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase">
-                  {dossierStep === 0 ? 'Физические данные' : dossierStep === 1 ? 'Статус и Опыт' : 'Цели и Мотивация'}
+              <h2 className="text-lg font-bold text-text-primary">
+                  {dossierStep === 0 ? 'Физические данные' : dossierStep === 1 ? 'Опыт и цели' : 'Мотивация'}
               </h2>
           </div>
 
@@ -424,50 +424,50 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
               {/* STEP 0: BIOMETRICS & LOCATION */}
               {dossierStep === 0 && (
                   <div className="space-y-4 animate-fade-in">
-                       <div className="grid grid-cols-2 gap-4">
-                           <div className="space-y-1">
-                               <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Рост (см)</label>
-                               <input 
+                       <div className="grid grid-cols-2 gap-3">
+                           <div className="space-y-1.5">
+                               <label className="text-xs font-medium text-text-secondary ml-1">Рост (см)</label>
+                               <input
                                    type="number"
-                                   value={dossier.height} onChange={e => updateDossier('height', e.target.value)} 
-                                   className={`w-full bg-white dark:bg-[#1F2128] border ${errors.height ? 'border-red-500' : 'border-slate-200 dark:border-white/10 focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold outline-none`}
+                                   value={dossier.height} onChange={e => updateDossier('height', e.target.value)}
+                                   className={`w-full bg-body border ${errors.height ? 'border-[#FF3B30]' : 'border-border-color focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-text-primary font-medium outline-none`}
                                    placeholder="180"
                                />
                            </div>
-                           <div className="space-y-1">
-                               <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Вес (кг)</label>
-                               <input 
+                           <div className="space-y-1.5">
+                               <label className="text-xs font-medium text-text-secondary ml-1">Вес (кг)</label>
+                               <input
                                    type="number"
-                                   value={dossier.weight} onChange={e => updateDossier('weight', e.target.value)} 
-                                   className={`w-full bg-white dark:bg-[#1F2128] border ${errors.weight ? 'border-red-500' : 'border-slate-200 dark:border-white/10 focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold outline-none`}
+                                   value={dossier.weight} onChange={e => updateDossier('weight', e.target.value)}
+                                   className={`w-full bg-body border ${errors.weight ? 'border-[#FF3B30]' : 'border-border-color focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-text-primary font-medium outline-none`}
                                    placeholder="75"
                                />
                            </div>
                        </div>
-                       
-                       <div className="space-y-1">
-                           <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Дата рождения</label>
-                           <input 
+
+                       <div className="space-y-1.5">
+                           <label className="text-xs font-medium text-text-secondary ml-1">Дата рождения</label>
+                           <input
                                type="date"
-                               value={dossier.birthDate} onChange={e => updateDossier('birthDate', e.target.value)} 
-                               className={`w-full bg-white dark:bg-[#1F2128] border ${errors.birthDate ? 'border-red-500' : 'border-slate-200 dark:border-white/10 focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold outline-none`}
+                               value={dossier.birthDate} onChange={e => updateDossier('birthDate', e.target.value)}
+                               className={`w-full bg-body border ${errors.birthDate ? 'border-[#FF3B30]' : 'border-border-color focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-text-primary font-medium outline-none`}
                            />
                        </div>
 
-                       <div className="space-y-1">
-                           <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Город проживания</label>
-                           <input 
-                               value={dossier.location} onChange={e => updateDossier('location', e.target.value)} 
-                               className={`w-full bg-white dark:bg-[#1F2128] border ${errors.location ? 'border-red-500' : 'border-slate-200 dark:border-white/10 focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold outline-none`}
+                       <div className="space-y-1.5">
+                           <label className="text-xs font-medium text-text-secondary ml-1">Город проживания</label>
+                           <input
+                               value={dossier.location} onChange={e => updateDossier('location', e.target.value)}
+                               className={`w-full bg-body border ${errors.location ? 'border-[#FF3B30]' : 'border-border-color focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-text-primary font-medium outline-none`}
                                placeholder="Москва"
                            />
                        </div>
-                       
-                       <div className="space-y-1">
-                           <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Условия проживания</label>
-                           <select 
-                               value={dossier.livingSituation} onChange={e => updateDossier('livingSituation', e.target.value as any)} 
-                               className="w-full bg-white dark:bg-[#1F2128] border border-slate-200 dark:border-white/10 focus:border-[#6C5DD3] rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold outline-none appearance-none"
+
+                       <div className="space-y-1.5">
+                           <label className="text-xs font-medium text-text-secondary ml-1">Условия проживания</label>
+                           <select
+                               value={dossier.livingSituation} onChange={e => updateDossier('livingSituation', e.target.value as any)}
+                               className="w-full bg-body border border-border-color focus:border-[#6C5DD3] rounded-xl py-3 px-4 text-text-primary font-medium outline-none appearance-none"
                            >
                                <option value="ALONE">Живу один</option>
                                <option value="PARENTS">С родителями</option>
@@ -481,29 +481,29 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
               {/* STEP 1: EXPERIENCE & MONEY */}
               {dossierStep === 1 && (
                   <div className="space-y-4 animate-fade-in">
-                       <div className="space-y-1">
-                           <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Опыт работы (кратко)</label>
-                           <textarea 
-                               value={dossier.workExperience} onChange={e => updateDossier('workExperience', e.target.value)} 
-                               className={`w-full bg-white dark:bg-[#1F2128] border ${errors.workExperience ? 'border-red-500' : 'border-slate-200 dark:border-white/10 focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold outline-none resize-none h-24`}
+                       <div className="space-y-1.5">
+                           <label className="text-xs font-medium text-text-secondary ml-1">Опыт работы (кратко)</label>
+                           <textarea
+                               value={dossier.workExperience} onChange={e => updateDossier('workExperience', e.target.value)}
+                               className={`w-full bg-body border ${errors.workExperience ? 'border-[#FF3B30]' : 'border-border-color focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-text-primary font-medium outline-none resize-none h-24`}
                                placeholder="Менеджер 2 года..."
                            />
                        </div>
 
-                       <div className="space-y-1">
-                           <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Желаемый доход (в месяц)</label>
-                           <input 
-                               value={dossier.incomeGoal} onChange={e => updateDossier('incomeGoal', e.target.value)} 
-                               className={`w-full bg-white dark:bg-[#1F2128] border ${errors.incomeGoal ? 'border-red-500' : 'border-slate-200 dark:border-white/10 focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold outline-none`}
+                       <div className="space-y-1.5">
+                           <label className="text-xs font-medium text-text-secondary ml-1">Желаемый доход (в месяц)</label>
+                           <input
+                               value={dossier.incomeGoal} onChange={e => updateDossier('incomeGoal', e.target.value)}
+                               className={`w-full bg-body border ${errors.incomeGoal ? 'border-[#FF3B30]' : 'border-border-color focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-text-primary font-medium outline-none`}
                                placeholder="100 000 руб."
                            />
                        </div>
 
-                       <div className="space-y-1">
-                           <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Ожидания от курса</label>
-                           <textarea 
-                               value={dossier.courseExpectations} onChange={e => updateDossier('courseExpectations', e.target.value)} 
-                               className="w-full bg-white dark:bg-[#1F2128] border border-slate-200 dark:border-white/10 focus:border-[#6C5DD3] rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold outline-none resize-none h-24"
+                       <div className="space-y-1.5">
+                           <label className="text-xs font-medium text-text-secondary ml-1">Ожидания от курса</label>
+                           <textarea
+                               value={dossier.courseExpectations} onChange={e => updateDossier('courseExpectations', e.target.value)}
+                               className="w-full bg-body border border-border-color focus:border-[#6C5DD3] rounded-xl py-3 px-4 text-text-primary font-medium outline-none resize-none h-24"
                                placeholder="Жесткая дисциплина, практика..."
                            />
                        </div>
@@ -513,20 +513,20 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
               {/* STEP 2: GOALS & MOTIVATION */}
               {dossierStep === 2 && (
                    <div className="space-y-4 animate-fade-in">
-                       <div className="space-y-1">
-                           <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Что хочешь получить на выходе?</label>
-                           <textarea 
-                               value={dossier.courseGoals} onChange={e => updateDossier('courseGoals', e.target.value)} 
-                               className={`w-full bg-white dark:bg-[#1F2128] border ${errors.courseGoals ? 'border-red-500' : 'border-slate-200 dark:border-white/10 focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold outline-none resize-none h-24`}
+                       <div className="space-y-1.5">
+                           <label className="text-xs font-medium text-text-secondary ml-1">Что хочешь получить на выходе?</label>
+                           <textarea
+                               value={dossier.courseGoals} onChange={e => updateDossier('courseGoals', e.target.value)}
+                               className={`w-full bg-body border ${errors.courseGoals ? 'border-[#FF3B30]' : 'border-border-color focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-text-primary font-medium outline-none resize-none h-24`}
                                placeholder="Навык продаж, уверенность..."
                            />
                        </div>
 
-                       <div className="space-y-1">
-                           <label className="text-[10px] font-bold text-slate-400 uppercase ml-2">Почему записался на курс?</label>
-                           <textarea 
-                               value={dossier.motivation} onChange={e => updateDossier('motivation', e.target.value)} 
-                               className={`w-full bg-white dark:bg-[#1F2128] border ${errors.motivation ? 'border-red-500' : 'border-slate-200 dark:border-white/10 focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-slate-900 dark:text-white font-bold outline-none resize-none h-32`}
+                       <div className="space-y-1.5">
+                           <label className="text-xs font-medium text-text-secondary ml-1">Почему записался на курс?</label>
+                           <textarea
+                               value={dossier.motivation} onChange={e => updateDossier('motivation', e.target.value)}
+                               className={`w-full bg-body border ${errors.motivation ? 'border-[#FF3B30]' : 'border-border-color focus:border-[#6C5DD3]'} rounded-xl py-3 px-4 text-text-primary font-medium outline-none resize-none h-32`}
                                placeholder="Хочу изменить жизнь..."
                            />
                        </div>
@@ -535,11 +535,11 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
           </div>
 
           <div className="flex gap-3 mt-4 flex-shrink-0">
-               <button onClick={() => dossierStep > 0 ? setDossierStep(dossierStep - 1) : setStep('IDENTITY')} className="w-14 h-14 flex items-center justify-center rounded-2xl bg-white dark:bg-[#1F2128] text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-slate-200 dark:border-white/5">
-                   ←
+               <button onClick={() => dossierStep > 0 ? setDossierStep(dossierStep - 1) : setStep('IDENTITY')} className="w-12 h-12 flex items-center justify-center rounded-xl bg-body text-text-secondary hover:text-text-primary transition-colors border border-border-color">
+                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                </button>
-               <Button onClick={handleDossierNext} fullWidth className="!rounded-2xl !bg-slate-900 !text-white dark:!bg-white dark:!text-black">
-                   {dossierStep === 2 ? 'ЗАВЕРШИТЬ' : 'ДАЛЕЕ'}
+               <Button onClick={handleDossierNext} fullWidth className="!rounded-xl !bg-[#6C5DD3] !text-white">
+                   {dossierStep === 2 ? 'Завершить' : 'Далее'}
                </Button>
           </div>
       </div>
@@ -547,38 +547,27 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
 
   const renderScanning = () => (
       <div className="flex flex-col items-center justify-center w-full py-10 animate-fade-in">
-           <div className="relative w-48 h-48 mb-8">
-                <div className="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-[#1F2128]"></div>
-                <div className="absolute inset-0 rounded-full border-4 border-t-[#6C5DD3] border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-                
-                <div className="absolute inset-2 rounded-full overflow-hidden bg-white dark:bg-black ring-4 ring-slate-100 dark:ring-[#1F2128]">
-                     {selectedImage && <img src={selectedImage} className="w-full h-full object-cover opacity-80 dark:opacity-50 grayscale" />}
-                     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#6C5DD3]/50 to-transparent h-[20%] w-full animate-[scan_2s_linear_infinite]"></div>
-                     <div className="absolute inset-0 grid grid-cols-6 grid-rows-6 pointer-events-none">
-                        {[...Array(36)].map((_, i) => (
-                            <div key={i} className="border-[0.5px] border-[#6C5DD3]/20"></div>
-                        ))}
-                     </div>
-                </div>
+           <div className="relative w-32 h-32 mb-6">
+                {selectedImage && (
+                    <img src={selectedImage} className="w-full h-full object-cover rounded-full opacity-60" />
+                )}
+                <div className="absolute inset-0 rounded-full border-3 border-[#6C5DD3] border-t-transparent animate-spin"></div>
            </div>
-           <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-widest animate-pulse">{loadingText}</h3>
-           <style>{`
-             @keyframes scan { 0% { top: -20%; } 100% { top: 100%; } }
-           `}</style>
+           <h3 className="text-base font-semibold text-text-primary mb-1">{loadingText}</h3>
+           <p className="text-text-secondary text-xs">Пожалуйста, подождите</p>
       </div>
   );
 
   const renderFinalizing = () => (
     <div className="flex flex-col items-center justify-center w-full py-20 animate-fade-in">
-        <div className="w-24 h-24 mb-8 relative">
-             <div className="absolute inset-0 bg-[#6C5DD3] rounded-full blur-[30px] opacity-40 animate-pulse"></div>
-             <svg className="animate-spin text-slate-900 dark:text-white w-full h-full" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <div className="w-16 h-16 mb-6">
+             <svg className="animate-spin text-[#6C5DD3] w-full h-full" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
              </svg>
         </div>
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{loadingText}</h3>
-        <p className="text-slate-400 dark:text-white/40 text-xs uppercase tracking-widest">Создание персонажа...</p>
+        <h3 className="text-base font-semibold text-text-primary mb-1">{loadingText}</h3>
+        <p className="text-text-secondary text-xs">Создание профиля...</p>
     </div>
   );
 

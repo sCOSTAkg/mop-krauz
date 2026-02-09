@@ -24,33 +24,31 @@ interface LessonViewProps {
 // Markdown Helper Component
 const MarkdownToolbar = ({ onInsert }: { onInsert: (tag: string, placeholder?: string) => void }) => (
     <div className="flex gap-2 mb-2 overflow-x-auto no-scrollbar pb-1">
-        <button onClick={() => onInsert('**', 'bold')} className="px-2 py-1 bg-white/5 rounded text-[10px] hover:bg-white/10 border border-white/5 font-bold">B</button>
-        <button onClick={() => onInsert('*', 'italic')} className="px-2 py-1 bg-white/5 rounded text-[10px] hover:bg-white/10 border border-white/5 italic">I</button>
-        <button onClick={() => onInsert('\n# ', 'Header')} className="px-2 py-1 bg-white/5 rounded text-[10px] hover:bg-white/10 border border-white/5">H1</button>
-        <button onClick={() => onInsert('\n## ', 'Header')} className="px-2 py-1 bg-white/5 rounded text-[10px] hover:bg-white/10 border border-white/5">H2</button>
-        <button onClick={() => onInsert('[', 'Link](url)')} className="px-2 py-1 bg-white/5 rounded text-[10px] hover:bg-white/10 border border-white/5">🔗</button>
-        <button onClick={() => onInsert('\n- ', 'List Item')} className="px-2 py-1 bg-white/5 rounded text-[10px] hover:bg-white/10 border border-white/5">List</button>
-        <button onClick={() => onInsert('`', 'code')} className="px-2 py-1 bg-white/5 rounded text-[10px] hover:bg-white/10 border border-white/5 font-mono">Code</button>
+        <button onClick={() => onInsert('**', 'bold')} className="px-2.5 py-1.5 bg-body rounded-lg text-xs border border-border-color font-bold">B</button>
+        <button onClick={() => onInsert('*', 'italic')} className="px-2.5 py-1.5 bg-body rounded-lg text-xs border border-border-color italic">I</button>
+        <button onClick={() => onInsert('\n# ', 'Header')} className="px-2.5 py-1.5 bg-body rounded-lg text-xs border border-border-color">H1</button>
+        <button onClick={() => onInsert('\n## ', 'Header')} className="px-2.5 py-1.5 bg-body rounded-lg text-xs border border-border-color">H2</button>
+        <button onClick={() => onInsert('[', 'Link](url)')} className="px-2.5 py-1.5 bg-body rounded-lg text-xs border border-border-color">Link</button>
+        <button onClick={() => onInsert('\n- ', 'List Item')} className="px-2.5 py-1.5 bg-body rounded-lg text-xs border border-border-color">List</button>
+        <button onClick={() => onInsert('`', 'code')} className="px-2.5 py-1.5 bg-body rounded-lg text-xs border border-border-color font-mono">Code</button>
     </div>
 );
 
 // Helper Component for Admin Sections
-const EditSection = ({ title, isOpen, onToggle, children, icon, colorClass = "text-white" }: any) => (
-  <div className={`bg-[#16181D] border ${isOpen ? 'border-[#6C5DD3]/30' : 'border-white/5'} rounded-2xl overflow-hidden transition-all duration-300 shadow-sm`}>
+const EditSection = ({ title, isOpen, onToggle, children, icon }: any) => (
+  <div className={`bg-card border ${isOpen ? 'border-[#6C5DD3]/30' : 'border-border-color'} rounded-2xl overflow-hidden transition-all duration-300`}>
     <button
       onClick={onToggle}
-      className="w-full flex items-center justify-between p-4 bg-white/5 active:bg-white/10 transition-colors"
+      className="w-full flex items-center justify-between p-4 active:bg-body/50 transition-colors"
     >
       <div className="flex items-center gap-3">
-         <div className="w-8 h-8 rounded-lg bg-black/20 flex items-center justify-center text-lg">{icon}</div>
-         <span className={`text-[10px] font-black uppercase tracking-widest ${colorClass}`}>{title}</span>
+         <div className="w-8 h-8 rounded-xl bg-body flex items-center justify-center text-lg">{icon}</div>
+         <span className="text-sm font-semibold text-text-primary">{title}</span>
       </div>
-      <div className={`w-6 h-6 rounded-full bg-black/20 flex items-center justify-center transition-transform duration-300 ${isOpen ? 'rotate-180 text-white' : 'text-white/30'}`}>
-        ▼
-      </div>
+      <svg className={`w-4 h-4 text-text-secondary transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
     </button>
     <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
-        <div className="p-4 space-y-4 border-t border-white/5">
+        <div className="p-4 space-y-4 border-t border-border-color">
             {children}
         </div>
     </div>
@@ -179,138 +177,64 @@ export const LessonView: React.FC<LessonViewProps> = ({
   // --- ADMIN EDIT RENDER ---
   if (isEditing && isAdmin) {
       return (
-        <div className="flex flex-col min-h-screen bg-[#0F1115] text-white">
-            <div className="sticky top-0 z-50 px-6 pt-[calc(var(--safe-top)+10px)] pb-4 flex items-center justify-between bg-[#0F1115]/90 backdrop-blur-md border-b border-white/10 shadow-xl">
-                <button onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-xl bg-white/5 text-[10px] font-bold text-red-400 uppercase tracking-widest hover:bg-white/10">Отмена</button>
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#6C5DD3] animate-pulse">Режим Редактора</span>
-                <button onClick={handleSaveLesson} className="px-4 py-2 rounded-xl bg-[#6C5DD3] text-[10px] font-bold text-white uppercase tracking-widest hover:bg-[#5b4eb5] shadow-lg shadow-[#6C5DD3]/20">Сохранить</button>
+        <div className="flex flex-col min-h-screen bg-body text-text-primary">
+            <div className="sticky top-0 z-50 px-4 pt-[calc(var(--safe-top)+10px)] pb-3 flex items-center justify-between bg-surface/90 backdrop-blur-md border-b border-border-color">
+                <button onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-[#FF3B30]">Отмена</button>
+                <span className="text-sm font-semibold text-text-primary">Редактор</span>
+                <button onClick={handleSaveLesson} className="px-4 py-2 rounded-xl bg-[#6C5DD3] text-sm font-semibold text-white">Сохранить</button>
             </div>
 
-            <div className="p-4 space-y-4 pb-40 overflow-y-auto">
-                {/* 1. Basic Info Section */}
-                <EditSection 
-                    title="Основная информация" 
-                    icon="📋" 
-                    isOpen={openSection === 'info'} 
-                    onToggle={() => setOpenSection(openSection === 'info' ? 'content' : 'info')}
-                >
+            <div className="p-4 space-y-3 pb-40 overflow-y-auto">
+                <EditSection title="Основная информация" icon="📋" isOpen={openSection === 'info'} onToggle={() => setOpenSection(openSection === 'info' ? 'content' : 'info')}>
                     <div className="space-y-3">
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Название</label>
-                            <input 
-                                value={editedLesson.title}
-                                onChange={(e) => setEditedLesson({...editedLesson, title: e.target.value})}
-                                className="w-full bg-[#1F2128] border border-white/10 p-4 rounded-xl font-bold text-white outline-none focus:border-[#6C5DD3] focus:bg-black/40 transition-all"
-                                placeholder="Например: Психология Влияния"
-                            />
+                        <div>
+                            <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Название</label>
+                            <input value={editedLesson.title} onChange={(e) => setEditedLesson({...editedLesson, title: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm font-medium text-text-primary outline-none focus:border-[#6C5DD3] transition-all" placeholder="Название урока" />
                         </div>
-
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Тизер (Описание)</label>
-                            <textarea 
-                                value={editedLesson.description}
-                                onChange={(e) => setEditedLesson({...editedLesson, description: e.target.value})}
-                                className="w-full bg-[#1F2128] border border-white/10 p-4 rounded-xl text-xs font-medium text-white/80 outline-none focus:border-[#6C5DD3] h-20 resize-none focus:bg-black/40 transition-all"
-                                placeholder="Отображается в списке модулей..."
-                            />
+                        <div>
+                            <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Описание</label>
+                            <textarea value={editedLesson.description} onChange={(e) => setEditedLesson({...editedLesson, description: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm text-text-primary outline-none focus:border-[#6C5DD3] h-20 resize-none transition-all" placeholder="Краткое описание" />
                         </div>
-
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Видео (YouTube)</label>
-                            <div className="flex items-center gap-2 bg-[#1F2128] border border-white/10 rounded-xl p-2 focus-within:border-[#6C5DD3] transition-all">
-                                <span className="pl-2 text-lg">📹</span>
-                                <input 
-                                    value={editedLesson.videoUrl || ''}
-                                    onChange={(e) => setEditedLesson({...editedLesson, videoUrl: e.target.value})}
-                                    className="w-full bg-transparent p-2 text-xs font-mono text-[#6C5DD3] outline-none"
-                                    placeholder="https://youtube.com/..."
-                                />
-                            </div>
+                        <div>
+                            <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Видео (YouTube)</label>
+                            <input value={editedLesson.videoUrl || ''} onChange={(e) => setEditedLesson({...editedLesson, videoUrl: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm font-mono text-[#6C5DD3] outline-none focus:border-[#6C5DD3] transition-all" placeholder="https://youtube.com/..." />
                         </div>
                     </div>
                 </EditSection>
 
-                {/* 2. Content Section */}
-                <EditSection 
-                    title="Контент Урока (Markdown)" 
-                    icon="📝" 
-                    isOpen={openSection === 'content'} 
-                    onToggle={() => setOpenSection(openSection === 'content' ? 'homework' : 'content')}
-                >
-                    <div className="bg-[#1F2128] border border-white/10 rounded-xl p-2 focus-within:border-[#6C5DD3] transition-colors">
+                <EditSection title="Контент (Markdown)" icon="📝" isOpen={openSection === 'content'} onToggle={() => setOpenSection(openSection === 'content' ? 'homework' : 'content')}>
+                    <div className="bg-body border border-border-color rounded-xl p-2 focus-within:border-[#6C5DD3] transition-colors">
                         <MarkdownToolbar onInsert={insertMarkdown} />
-                        <textarea 
-                            id="contentEditor"
-                            value={editedLesson.content}
-                            onChange={(e) => setEditedLesson({...editedLesson, content: e.target.value})}
-                            className="w-full bg-transparent text-sm font-mono text-white/90 outline-none h-[60vh] font-medium leading-relaxed resize-y focus:bg-black/20 p-2"
-                            placeholder="# Заголовок\n\nОсновной текст урока..."
-                        />
+                        <textarea id="contentEditor" value={editedLesson.content} onChange={(e) => setEditedLesson({...editedLesson, content: e.target.value})} className="w-full bg-transparent text-sm font-mono text-text-primary outline-none h-[60vh] leading-relaxed resize-y p-2" placeholder="# Заголовок" />
                     </div>
                 </EditSection>
 
-                {/* 3. Homework & AI Section */}
-                <EditSection 
-                    title="Боевая Задача (ДЗ)" 
-                    icon="🎯" 
-                    colorClass="text-yellow-500"
-                    isOpen={openSection === 'homework'} 
-                    onToggle={() => setOpenSection(openSection === 'homework' ? 'info' : 'homework')}
-                >
+                <EditSection title="Домашнее задание" icon="🎯" isOpen={openSection === 'homework'} onToggle={() => setOpenSection(openSection === 'homework' ? 'info' : 'homework')}>
                     <div className="space-y-4">
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Формат сдачи</label>
+                        <div>
+                            <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Формат сдачи</label>
                             <div className="grid grid-cols-4 gap-2">
                                 {['TEXT', 'PHOTO', 'VIDEO', 'FILE'].map(t => (
-                                    <button 
-                                        key={t}
-                                        onClick={() => setEditedLesson({...editedLesson, homeworkType: t as HomeworkType})}
-                                        className={`py-2 rounded-lg text-[8px] font-black uppercase border transition-all ${editedLesson.homeworkType === t ? 'bg-[#6C5DD3] text-white border-[#6C5DD3]' : 'border-white/10 text-slate-500 hover:bg-white/5'}`}
-                                    >
+                                    <button key={t} onClick={() => setEditedLesson({...editedLesson, homeworkType: t as HomeworkType})} className={`py-2.5 rounded-xl text-xs font-semibold border transition-all ${editedLesson.homeworkType === t ? 'bg-[#6C5DD3] text-white border-[#6C5DD3]' : 'border-border-color text-text-secondary'}`}>
                                         {t}
                                     </button>
                                 ))}
                             </div>
                         </div>
-
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black uppercase text-slate-500 tracking-widest ml-1">Текст задания (Для студента)</label>
-                            <textarea 
-                                value={editedLesson.homeworkTask}
-                                onChange={(e) => setEditedLesson({...editedLesson, homeworkTask: e.target.value})}
-                                className="w-full bg-[#1F2128] border border-white/10 p-4 rounded-xl text-sm font-medium text-white/80 outline-none focus:border-[#6C5DD3] h-24 resize-none focus:bg-black/40"
-                                placeholder="Опишите, что нужно сделать..."
-                            />
+                        <div>
+                            <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Текст задания</label>
+                            <textarea value={editedLesson.homeworkTask} onChange={(e) => setEditedLesson({...editedLesson, homeworkTask: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm text-text-primary outline-none focus:border-[#6C5DD3] h-24 resize-none" placeholder="Опишите задание..." />
                         </div>
-
-                        {/* Classified Section */}
-                        <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/5 space-y-3 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-40 transition-opacity">
-                                <span className="text-4xl">🤖</span>
-                            </div>
-                            <label className="text-[9px] font-black uppercase text-red-400 tracking-widest flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                                Инструкция для AI (Скрыто)
+                        <div className="p-4 rounded-xl border border-[#FF3B30]/20 bg-[#FF3B30]/5 space-y-3">
+                            <label className="text-xs font-medium text-[#FF3B30] flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-[#FF3B30]"></span>
+                                Инструкция для AI (скрыто от студентов)
                             </label>
-                            <textarea 
-                                value={editedLesson.aiGradingInstruction}
-                                onChange={(e) => setEditedLesson({...editedLesson, aiGradingInstruction: e.target.value})}
-                                className="w-full bg-black/40 border border-red-500/20 p-3 rounded-lg text-xs font-mono text-red-100/80 outline-none focus:border-red-500 h-32 resize-none"
-                                placeholder="Критерии оценки для ИИ. Пример: 'Проверь уверенность голоса. Отклоняй, если короче 10 слов'."
-                            />
+                            <textarea value={editedLesson.aiGradingInstruction} onChange={(e) => setEditedLesson({...editedLesson, aiGradingInstruction: e.target.value})} className="w-full bg-body border border-[#FF3B30]/20 p-3 rounded-xl text-sm font-mono text-text-primary outline-none focus:border-[#FF3B30] h-32 resize-none" placeholder="Критерии оценки..." />
                         </div>
-
-                        <div className="space-y-1">
-                            <label className="text-[9px] font-black uppercase text-yellow-500 tracking-widest ml-1">Награда (XP)</label>
-                            <input 
-                                type="number"
-                                value={editedLesson.xpReward}
-                                onChange={(e) => {
-                                    const val = parseInt(e.target.value);
-                                    setEditedLesson({...editedLesson, xpReward: isNaN(val) ? 0 : val});
-                                }}
-                                className="w-full bg-[#1F2128] border border-yellow-500/20 p-4 rounded-xl text-xl font-black text-yellow-500 outline-none focus:border-yellow-500 text-center"
-                            />
+                        <div>
+                            <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Награда (XP)</label>
+                            <input type="number" value={editedLesson.xpReward} onChange={(e) => { const val = parseInt(e.target.value); setEditedLesson({...editedLesson, xpReward: isNaN(val) ? 0 : val}); }} className="w-full bg-body border border-border-color p-3 rounded-xl text-lg font-bold text-[#6C5DD3] outline-none focus:border-[#6C5DD3] text-center" />
                         </div>
                     </div>
                 </EditSection>
@@ -322,189 +246,158 @@ export const LessonView: React.FC<LessonViewProps> = ({
   // --- STANDARD VIEW RENDER ---
   return (
     <div className="flex flex-col min-h-screen bg-body">
-      {/* Premium Header */}
-      <div className="sticky top-0 z-40 px-6 pt-[calc(var(--safe-top)+10px)] pb-4 flex items-center justify-between island-blur bg-body/80 border-b border-white/5 transition-all">
-        <button onClick={onBack} className="w-10 h-10 rounded-2xl bg-surface border border-border-color flex items-center justify-center text-text-primary active:scale-90 transition-all shadow-sm">
-           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+      {/* Header */}
+      <div className="sticky top-0 z-40 px-4 pt-[calc(var(--safe-top)+8px)] pb-3 flex items-center justify-between bg-surface/90 backdrop-blur-md border-b border-border-color">
+        <button onClick={onBack} className="w-10 h-10 rounded-xl bg-body border border-border-color flex items-center justify-center text-text-primary active:scale-95 transition-transform">
+           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
-        <div className="text-center px-4 flex-1">
-             <span className="text-[8px] font-black uppercase tracking-[0.2em] text-[#6C5DD3] mb-0.5 block">Текущая задача</span>
-             <h2 className="text-sm font-black text-text-primary truncate">{lesson.title}</h2>
-        </div>
+        <h2 className="text-sm font-semibold text-text-primary truncate px-3 flex-1 text-center">{lesson.title}</h2>
         <div className="flex items-center gap-2">
             {isAdmin && (
-                <button 
-                    onClick={() => setIsEditing(true)}
-                    className="w-10 h-10 rounded-2xl bg-[#6C5DD3]/10 text-[#6C5DD3] flex items-center justify-center border border-[#6C5DD3]/20 hover:bg-[#6C5DD3] hover:text-white transition-all"
-                >
+                <button onClick={() => setIsEditing(true)} className="w-10 h-10 rounded-xl bg-[#6C5DD3]/10 text-[#6C5DD3] flex items-center justify-center">
                     ✎
                 </button>
             )}
-            <div className="w-10 h-10 rounded-2xl bg-[#6C5DD3]/10 text-[#6C5DD3] flex items-center justify-center font-black text-[10px] border border-[#6C5DD3]/20">
-                {lesson.xpReward}
+            <div className="px-3 py-1.5 rounded-lg bg-[#6C5DD3]/10 text-[#6C5DD3] text-xs font-semibold">
+                +{lesson.xpReward}
             </div>
         </div>
       </div>
 
-      <div className="px-6 pt-6 pb-40 max-w-2xl mx-auto w-full space-y-8 animate-fade-in">
-        
-        {/* Video Player Section */}
-        {hasVideo && (
-            <div className="relative rounded-[2.5rem] overflow-hidden shadow-2xl aspect-video bg-black ring-1 ring-white/5">
+      <div className="px-4 pt-4 pb-32 max-w-2xl mx-auto w-full space-y-5 animate-fade-in">
+
+        {/* Video */}
+        {hasVideo && videoUrl && (
+            <div className="relative rounded-2xl overflow-hidden aspect-video bg-card border border-border-color">
                 {!isVideoReady && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-[#16181D] animate-pulse z-10">
-                        <div className="flex flex-col items-center gap-3">
-                            <div className="w-12 h-12 rounded-full border-2 border-white/10 border-t-[#6C5DD3] animate-spin"></div>
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Загрузка данных...</span>
-                        </div>
+                    <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
+                        <div className="w-8 h-8 border-2 border-border-color border-t-[#6C5DD3] rounded-full animate-spin"></div>
                     </div>
                 )}
-                <VideoPlayer 
-                    url={videoUrl} 
-                    width="100%" 
-                    height="100%" 
-                    controls={true}
-                    onReady={() => setIsVideoReady(true)}
-                    config={{ youtube: { playerVars: { origin: window.location.origin }}}}
-                />
+                <VideoPlayer url={videoUrl} width="100%" height="100%" controls={true} onReady={() => setIsVideoReady(true)} config={{ youtube: { playerVars: { origin: window.location.origin }}}} />
             </div>
         )}
 
-        {/* Content Card */}
-        <div className="bg-surface p-8 rounded-[2.5rem] border border-border-color shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#6C5DD3]/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
-            
-            <div className="markdown-content text-text-primary/90">
-                <ReactMarkdown
-                    components={{
-                        h1: ({node, ...p}) => <h1 className="text-2xl font-black mb-6 text-text-primary tracking-tight" {...p} />,
-                        h2: ({node, ...p}) => <h2 className="text-xl font-bold mt-10 mb-4 text-text-primary border-l-4 border-[#6C5DD3] pl-4" {...p} />,
-                        p: ({node, ...p}) => <p className="mb-6 leading-relaxed font-medium opacity-80" {...p} />,
-                        ul: ({node, ...p}) => <ul className="list-disc pl-6 mb-6 space-y-2 marker:text-[#6C5DD3]" {...p} />,
-                        blockquote: ({node, ...p}) => <blockquote className="border-l-4 border-[#6C5DD3] bg-[#6C5DD3]/5 p-5 rounded-2xl italic my-8 text-text-primary/70" {...p} />,
-                    }}
-                >
-                    {lesson.content}
-                </ReactMarkdown>
+        {lesson.description && (
+            <p className="text-sm text-text-secondary leading-relaxed">{lesson.description}</p>
+        )}
+
+        {/* Content */}
+        <div className="bg-card p-5 rounded-2xl border border-border-color">
+            <div className="markdown-content text-text-primary">
+                {lesson.content && lesson.content.trim() ? (
+                    <ReactMarkdown
+                        components={{
+                            h1: ({node, ...p}) => <h1 className="text-xl font-bold mb-4 text-text-primary" {...p} />,
+                            h2: ({node, ...p}) => <h2 className="text-lg font-semibold mt-6 mb-3 text-text-primary border-l-3 border-[#6C5DD3] pl-3" {...p} />,
+                            p: ({node, ...p}) => <p className="mb-4 leading-relaxed text-text-primary/85" {...p} />,
+                            ul: ({node, ...p}) => <ul className="list-disc pl-5 mb-4 space-y-1.5 marker:text-[#6C5DD3]" {...p} />,
+                            blockquote: ({node, ...p}) => <blockquote className="border-l-3 border-[#6C5DD3] bg-[#6C5DD3]/5 p-4 rounded-xl italic my-4 text-text-secondary" {...p} />,
+                        }}
+                    >
+                        {lesson.content}
+                    </ReactMarkdown>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <div className="text-3xl mb-3 opacity-30">{'\u{1F4DD}'}</div>
+                        <p className="text-text-secondary text-sm">Контент пока не добавлен</p>
+                    </div>
+                )}
             </div>
         </div>
 
-        {/* Questions Section */}
-        <div className="bg-surface p-6 rounded-[2.5rem] border border-border-color shadow-sm space-y-4">
+        {/* Questions */}
+        <div className="bg-card p-4 rounded-2xl border border-border-color space-y-3">
              <div className="flex justify-between items-center">
-                 <h3 className="text-text-primary font-black uppercase text-xs tracking-widest">Прямая связь</h3>
-                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${questionsRemaining > 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                     Лимит: {questionsRemaining}/5
+                 <h3 className="text-sm font-semibold text-text-primary">Вопрос преподавателю</h3>
+                 <span className={`text-xs font-medium px-2 py-0.5 rounded-lg ${questionsRemaining > 0 ? 'bg-[#34C759]/10 text-[#34C759]' : 'bg-[#FF3B30]/10 text-[#FF3B30]'}`}>
+                     {questionsRemaining}/5
                  </span>
              </div>
              <div className="flex gap-2">
-                 <input 
+                 <input
                     value={questionText}
                     onChange={(e) => setQuestionText(e.target.value)}
-                    placeholder="Ваш вопрос Командиру..."
+                    placeholder="Ваш вопрос..."
                     disabled={questionsRemaining <= 0 || isAsking}
-                    className="flex-1 bg-body border border-border-color rounded-2xl px-5 py-3 text-sm focus:border-[#6C5DD3] outline-none disabled:opacity-50 transition-all"
+                    className="flex-1 bg-body border border-border-color rounded-xl px-4 py-3 text-sm focus:border-[#6C5DD3] outline-none disabled:opacity-50 transition-all"
                  />
-                 <button 
+                 <button
                     onClick={handleAskQuestion}
                     disabled={questionsRemaining <= 0 || isAsking || !questionText.trim()}
-                    className="bg-[#6C5DD3] text-white rounded-2xl w-12 h-12 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-50"
+                    className="bg-[#6C5DD3] text-white rounded-xl w-11 h-11 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
                  >
-                    {isAsking ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : '➤'}
+                    {isAsking ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>}
                  </button>
              </div>
         </div>
 
-        {/* Homework Section */}
+        {/* Homework */}
         {!isCompleted ? (
-            <div className="relative rounded-[3rem] overflow-hidden bg-[#16181D] shadow-2xl p-8 group border border-white/5">
-                <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#6C5DD3] to-[#FFAB7B]"></div>
-                
-                <div className="flex items-center gap-4 mb-8">
-                    <div className="w-14 h-14 rounded-2xl bg-[#6C5DD3] flex items-center justify-center text-2xl shadow-[0_0_20px_rgba(108,93,211,0.3)]">
+            <div className="bg-card rounded-2xl border border-border-color p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#6C5DD3]/10 flex items-center justify-center text-xl">
                         {lesson.homeworkType === 'VIDEO' ? '📹' : lesson.homeworkType === 'PHOTO' ? '📸' : '✍️'}
                     </div>
                     <div>
-                        <h3 className="font-black text-xl text-white tracking-tight">Боевая задача</h3>
-                        <p className="text-[#6C5DD3] text-[9px] font-black uppercase tracking-[0.2em] mt-1">Вердикт выносит AI-Командир</p>
+                        <h3 className="font-semibold text-text-primary">Задание</h3>
+                        <p className="text-xs text-text-secondary">Проверяет AI</p>
                     </div>
                 </div>
-                
-                <div className="bg-white/5 p-6 rounded-2xl border border-white/5 mb-8 italic text-white/80 text-sm leading-relaxed">
+
+                <div className="bg-body p-4 rounded-xl text-sm text-text-secondary leading-relaxed italic">
                      "{lesson.homeworkTask}"
                 </div>
-                
+
                 {lesson.homeworkType === 'TEXT' ? (
-                    <textarea
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        placeholder="Введите отчет о выполнении..."
-                        className="w-full bg-black/40 text-white p-5 rounded-2xl border border-white/10 focus:border-[#6C5DD3] outline-none h-48 mb-8 resize-none text-sm transition-all focus:ring-1 focus:ring-[#6C5DD3]/50"
-                    />
+                    <textarea value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="Ваш ответ..." className="w-full bg-body text-text-primary p-4 rounded-xl border border-border-color focus:border-[#6C5DD3] outline-none h-40 resize-none text-sm transition-all" />
                 ) : (
-                    <div onClick={() => fileInputRef.current?.click()} className={`w-full h-40 mb-8 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center cursor-pointer transition-all ${selectedFile ? 'border-green-500 bg-green-500/5' : 'border-white/10 hover:border-[#6C5DD3] bg-white/5'}`}>
+                    <div onClick={() => fileInputRef.current?.click()} className={`w-full h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all ${selectedFile ? 'border-[#34C759] bg-[#34C759]/5' : 'border-border-color hover:border-[#6C5DD3] bg-body'}`}>
                         <input type="file" ref={fileInputRef} onChange={e => {
                             const f = e.target.files?.[0];
-                            if(f) {
-                                const r = new FileReader();
-                                r.onloadend = () => setSelectedFile(r.result as string);
-                                r.readAsDataURL(f);
-                            }
+                            if(f) { const r = new FileReader(); r.onloadend = () => setSelectedFile(r.result as string); r.readAsDataURL(f); }
                         }} className="hidden" />
-                        {selectedFile ? <span className="text-green-500 font-black uppercase text-xs">✓ Материал загружен</span> : <span className="text-white/30 text-xs font-black uppercase">Нажмите для загрузки</span>}
-                    </div>
-                )}
-                
-                {feedback && (
-                    <div className="mb-8 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl animate-fade-in backdrop-blur-md">
-                        <p className="text-white/90 text-sm leading-relaxed font-medium">👮‍♂️ <span className="font-black uppercase text-[10px] text-red-400 tracking-widest ml-1">Командир:</span> {feedback}</p>
+                        {selectedFile ? <span className="text-[#34C759] font-semibold text-sm">Файл загружен</span> : <span className="text-text-secondary text-sm">Нажмите для загрузки</span>}
                     </div>
                 )}
 
-                <button 
-                    onClick={handleSubmit} 
-                    disabled={isSubmitting || (lesson.homeworkType === 'TEXT' ? !inputText.trim() : !selectedFile)} 
-                    className="w-full py-5 bg-[#6C5DD3] text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg shadow-[#6C5DD3]/20 active:scale-95 transition-all disabled:opacity-50"
+                {feedback && (
+                    <div className="p-4 bg-[#FF3B30]/5 border border-[#FF3B30]/20 rounded-xl animate-fade-in">
+                        <p className="text-text-primary text-sm leading-relaxed"><span className="font-semibold text-[#FF3B30]">Обратная связь:</span> {feedback}</p>
+                    </div>
+                )}
+
+                <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting || (lesson.homeworkType === 'TEXT' ? !inputText.trim() : !selectedFile)}
+                    className="w-full py-3.5 bg-[#6C5DD3] text-white rounded-xl font-semibold text-sm shadow-sm active:scale-[0.98] transition-all disabled:opacity-50"
                 >
-                    {isSubmitting ? 'АНАЛИЗ...' : 'ОТПРАВИТЬ ОТЧЕТ'}
+                    {isSubmitting ? 'Проверка...' : 'Отправить'}
                 </button>
             </div>
         ) : (
-            <div className="bg-green-500/10 rounded-[3rem] p-12 text-center border border-green-500/20 shadow-inner">
-                <div className="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-xl animate-float">✓</div>
-                <h3 className="text-green-500 font-black text-2xl uppercase tracking-tighter mb-2">Задача Выполнена</h3>
-                <p className="text-green-500/60 text-xs font-black uppercase tracking-widest">+ {lesson.xpReward} XP получено</p>
+            <div className="bg-[#34C759]/10 rounded-2xl p-8 text-center border border-[#34C759]/20">
+                <div className="w-14 h-14 bg-[#34C759] text-white rounded-full flex items-center justify-center text-2xl mx-auto mb-4">✓</div>
+                <h3 className="text-[#34C759] font-bold text-lg mb-1">Выполнено</h3>
+                <p className="text-[#34C759]/70 text-sm">+{lesson.xpReward} XP</p>
             </div>
         )}
 
-        {/* Navigation Buttons */}
-        <div className="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-border-color">
+        {/* Navigation */}
+        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border-color">
             <button
                 onClick={() => { if (prevLesson) { onNavigate(prevLesson.id); telegram.haptic('selection'); } }}
                 disabled={!prevLesson}
-                className={`
-                    py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-2
-                    ${!prevLesson 
-                        ? 'opacity-30 cursor-not-allowed text-text-secondary border border-border-color bg-surface/50' 
-                        : 'bg-surface border border-border-color text-text-primary hover:border-[#6C5DD3] active:scale-95 shadow-sm'
-                    }
-                `}
+                className={`py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${!prevLesson ? 'opacity-30 cursor-not-allowed bg-body text-text-secondary' : 'bg-card border border-border-color text-text-primary active:scale-95'}`}
             >
-                <span>←</span> Назад
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg> Назад
             </button>
-            
             <button
                 onClick={() => { if (nextLesson) { onNavigate(nextLesson.id); telegram.haptic('selection'); } }}
                 disabled={!nextLesson}
-                className={`
-                    py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all flex items-center justify-center gap-2
-                    ${!nextLesson 
-                        ? 'opacity-30 cursor-not-allowed text-text-secondary border border-border-color bg-surface/50' 
-                        : 'bg-[#6C5DD3] text-white shadow-lg shadow-[#6C5DD3]/20 active:scale-95 hover:bg-[#5b4eb5]'
-                    }
-                `}
+                className={`py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${!nextLesson ? 'opacity-30 cursor-not-allowed bg-body text-text-secondary' : 'bg-[#6C5DD3] text-white active:scale-95'}`}
             >
-                Далее <span>→</span>
+                Далее <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
         </div>
       </div>

@@ -23,9 +23,9 @@ export const Toast: React.FC<ToastProps> = ({ toast, onRemove, onClick }) => {
   }, [toast.id, onRemove]);
 
   const bgColors = {
-    success: 'bg-[#00B050] border-[#00B050]/50 text-white',
-    error: 'bg-red-600 border-red-500/50 text-white',
-    info: 'bg-[#6C5DD3] border-[#6C5DD3]/50 text-white',
+    success: 'bg-[#34C759] border-[#34C759]/30 text-white',
+    error: 'bg-[#FF3B30] border-[#FF3B30]/30 text-white',
+    info: 'bg-[#6C5DD3] border-[#6C5DD3]/30 text-white',
   };
 
   const icons = {
@@ -44,14 +44,14 @@ export const Toast: React.FC<ToastProps> = ({ toast, onRemove, onClick }) => {
   return (
     <div 
         onClick={handleClick}
-        className={`pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-2xl border ${bgColors[toast.type]} backdrop-blur-md animate-slide-in ${toast.link ? 'cursor-pointer active:scale-95 transition-transform' : ''}`}
+        className={`pointer-events-auto flex items-center gap-3 p-4 rounded-xl shadow-md border ${bgColors[toast.type]} backdrop-blur-md animate-slide-in ${toast.link ? 'cursor-pointer active:scale-95 transition-transform' : ''}`}
     >
       <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center font-bold text-xs flex-shrink-0">
         {icons[toast.type]}
       </div>
       <div className="flex-1">
-          <p className="font-bold text-sm leading-tight">{toast.message}</p>
-          {toast.link && <span className="text-[10px] opacity-70 underline mt-1 block">Нажмите, чтобы перейти</span>}
+          <p className="font-semibold text-sm leading-tight">{toast.message}</p>
+          {toast.link && <span className="text-xs opacity-70 underline mt-1 block">Нажмите, чтобы перейти</span>}
       </div>
     </div>
   );

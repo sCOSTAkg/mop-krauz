@@ -1,22 +1,30 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import { Tab, UserProgress, Lesson, AppConfig, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification, Habit, Goal, SmartNavAction } from './types';
-import { COURSE_MODULES, MOCK_EVENTS, MOCK_MATERIALS, MOCK_STREAMS } from './constants';
 import { HomeDashboard } from './components/HomeDashboard';
-import { Profile } from './components/Profile';
-import { LessonView } from './components/LessonView';
-import { AdminDashboard } from './components/AdminDashboard';
 import { SmartNav } from './components/SmartNav';
 import { Storage } from './services/storage';
 import { telegram } from './services/telegramService';
 import { Toast, ToastMessage } from './components/Toast';
-import { SCENARIOS, SalesArena } from './components/SalesArena'; 
+import { SCENARIOS } from './components/SalesArena';
 import { NotebookView } from './components/NotebookView';
 import { MaterialsView } from './components/MaterialsView';
-import { VideoHub } from './components/VideoHub';
-import { HabitTracker } from './components/HabitTracker';
 import { ModuleList } from './components/ModuleList';
 import { Backend } from './services/backendService';
 import { XPService } from './services/xpService';
+
+// Lazy-loaded heavy components
+const Profile = React.lazy(() => import('./components/Profile').then(m => ({ default: m.Profile })));
+const LessonView = React.lazy(() => import('./components/LessonView').then(m => ({ default: m.LessonView })));
+const AdminDashboard = React.lazy(() => import('./components/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const SalesArena = React.lazy(() => import('./components/SalesArena').then(m => ({ default: m.SalesArena })));
+const HabitTracker = React.lazy(() => import('./components/HabitTracker').then(m => ({ default: m.HabitTracker })));
+const VideoHub = React.lazy(() => import('./components/VideoHub').then(m => ({ default: m.VideoHub })));
+
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="w-8 h-8 border-2 border-[#6C5DD3] border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
 
 const DEFAULT_CONFIG: AppConfig = {
   appName: 'SalesPro: 300 Spartans',
@@ -31,8 +39,8 @@ const DEFAULT_CONFIG: AppConfig = {
       crmWebhookUrl: '', 
       aiModelVersion: 'gemini-3-flash-preview',
       databaseUrl: '',
-      airtablePat: '', 
-      airtableBaseId: '',
+      airtablePat: import.meta.env.VITE_AIRTABLE_PAT || '', 
+      airtableBaseId: import.meta.env.VITE_AIRTABLE_BASE_ID || '', 
       airtableTableName: 'Users'
   },
   features: { enableRealTimeSync: true, autoApproveHomework: false, maintenanceMode: false, allowStudentChat: true, publicLeaderboard: true },
@@ -80,89 +88,116 @@ const App: React.FC = () => {
   const [navAction, setNavAction] = useState<SmartNavAction | null>(null);
 
   const [appConfig, setAppConfig] = useState<AppConfig>(() => Storage.get<AppConfig>('appConfig', DEFAULT_CONFIG));
-  const [modules, setModules] = useState<Module[]>(() => Storage.get<Module[]>('courseModules', COURSE_MODULES));
-  const [materials, setMaterials] = useState<Material[]>(() => Storage.get<Material[]>('materials', MOCK_MATERIALS));
-  const [streams, setStreams] = useState<Stream[]>(() => Storage.get<Stream[]>('streams', MOCK_STREAMS));
-  const [events, setEvents] = useState<CalendarEvent[]>(() => Storage.get<CalendarEvent[]>('events', MOCK_EVENTS));
+  const [modules, setModules] = useState<Module[]>(() => Storage.get<Module[]>('courseModules', []));
+  const [materials, setMaterials] = useState<Material[]>(() => Storage.get<Material[]>('materials', []));
+  const [streams, setStreams] = useState<Stream[]>(() => Storage.get<Stream[]>('streams', []));
+  const [events, setEvents] = useState<CalendarEvent[]>(() => Storage.get<CalendarEvent[]>('events', []));
   const [scenarios, setScenarios] = useState<ArenaScenario[]>(() => Storage.get<ArenaScenario[]>('scenarios', SCENARIOS));
   const [allUsers, setAllUsers] = useState<UserProgress[]>(() => Storage.get<UserProgress[]>('allUsers', []));
   const [userProgress, setUserProgress] = useState<UserProgress>(() => Storage.get<UserProgress>('progress', DEFAULT_USER));
   const [notifications, setNotifications] = useState<AppNotification[]>(() => Storage.get<AppNotification[]>('local_notifications', []));
 
-  const activeLesson = selectedLessonId ? modules.flatMap(m => m.lessons).find(l => l.id === selectedLessonId) : null;
-  const activeModule = activeLesson ? modules.find(m => m.lessons.some(l => l.id === activeLesson.id)) : null;
+  // Refs to break the syncData dependency loop
+  const userProgressRef = useRef(userProgress);
+  userProgressRef.current = userProgress;
+  const syncingRef = useRef(false);
+
+  const activeLesson = useMemo(() =>
+    selectedLessonId ? modules.flatMap(m => m.lessons).find(l => l.id === selectedLessonId) : null,
+    [selectedLessonId, modules]
+  );
+  const activeModule = useMemo(() =>
+    activeLesson ? modules.find(m => m.lessons.some(l => l.id === activeLesson.id)) : null,
+    [activeLesson, modules]
+  );
+
+  useEffect(() => {
+    const envPat = import.meta.env.VITE_AIRTABLE_PAT;
+    const envBaseId = import.meta.env.VITE_AIRTABLE_BASE_ID;
+
+    if (envPat || envBaseId) {
+        setAppConfig(prev => ({
+            ...prev,
+            integrations: {
+                ...prev.integrations,
+                airtablePat: envPat || prev.integrations.airtablePat,
+                airtableBaseId: envBaseId || prev.integrations.airtableBaseId
+            }
+        }));
+    }
+  }, []);
 
   useEffect(() => {
       setNavAction(null);
   }, [activeTab, selectedLessonId]);
 
+  // Stable syncData — no state dependencies, reads from refs, prevents overlapping calls
   const syncData = useCallback(async () => {
-      const remoteConfig = await Backend.fetchGlobalConfig(appConfig);
-      if (JSON.stringify(remoteConfig) !== JSON.stringify(appConfig)) {
-          setAppConfig(remoteConfig);
-      }
+      if (syncingRef.current) return;
+      syncingRef.current = true;
 
-      const rawNotifs = await Backend.fetchNotifications();
-      const myNotifs = rawNotifs.filter(n => {
-          if (n.targetUserId && n.targetUserId !== userProgress.telegramId) return false;
-          if (n.targetRole && n.targetRole !== 'ALL' && n.targetRole !== userProgress.role) return false;
-          return true;
-      });
-
-      if (myNotifs.length > notifications.length) {
-          const latest = myNotifs[0];
-          if (latest && latest.date > new Date(Date.now() - 10000).toISOString()) { 
-               addToast(latest.type === 'ALERT' ? 'error' : 'info', latest.title, latest.link);
-               telegram.haptic('success');
+      try {
+          // Fetch content (modules, materials, streams, events, scenarios) — the core data
+          const content = await Backend.fetchAllContent();
+          if (content) {
+              if (content.modules.length > 0) setModules(content.modules);
+              if (content.materials.length > 0) setMaterials(content.materials);
+              if (content.streams.length > 0) setStreams(content.streams);
+              if (content.events.length > 0) setEvents(content.events);
+              if (content.scenarios.length > 0) setScenarios(content.scenarios);
           }
-      }
-      setNotifications(myNotifs);
-      
-      const content = await Backend.fetchAllContent();
-      if (content) {
-          console.log('📦 Loaded content from backend:', {
-            modules: content.modules?.length || 0,
-            materials: content.materials?.length || 0,
-            streams: content.streams?.length || 0
-          });
-          const newModules = content.modules && content.modules.length > 0 ? content.modules : COURSE_MODULES;
-          if (JSON.stringify(newModules) !== JSON.stringify(modules)) setModules(newModules);
-          if (JSON.stringify(content.materials) !== JSON.stringify(materials)) setMaterials(content.materials);
-          if (JSON.stringify(content.streams) !== JSON.stringify(streams)) setStreams(content.streams);
-          if (JSON.stringify(content.events) !== JSON.stringify(events)) setEvents(content.events);
-          if (JSON.stringify(content.scenarios) !== JSON.stringify(scenarios)) setScenarios(content.scenarios);
-      }
 
-      const remoteUsers = await Backend.getLeaderboard();
-      if (JSON.stringify(remoteUsers) !== JSON.stringify(allUsers)) {
-          setAllUsers(remoteUsers);
-      }
-
-      if (userProgress.isAuthenticated) {
-          const freshUser = await Backend.syncUser(userProgress);
-          if (freshUser.xp !== userProgress.xp || freshUser.level !== userProgress.level || freshUser.role !== userProgress.role) {
-              setUserProgress(prev => ({ ...prev, ...freshUser }));
+          // Fetch notifications
+          const rawNotifs = await Backend.fetchNotifications();
+          if (rawNotifs.length > 0) {
+              const user = userProgressRef.current;
+              const myNotifs = rawNotifs.filter(n => {
+                  if (n.targetUserId && n.targetUserId !== user.telegramId) return false;
+                  if (n.targetRole && n.targetRole !== 'ALL' && n.targetRole !== user.role) return false;
+                  return true;
+              });
+              setNotifications(myNotifs);
           }
+
+          // Fetch leaderboard
+          const remoteUsers = await Backend.getLeaderboard();
+          if (remoteUsers.length > 0) setAllUsers(remoteUsers);
+
+          // Sync authenticated user
+          const currentUser = userProgressRef.current;
+          if (currentUser.isAuthenticated) {
+              const freshUser = await Backend.syncUser(currentUser);
+              if (freshUser.xp !== currentUser.xp || freshUser.level !== currentUser.level || freshUser.role !== currentUser.role) {
+                  setUserProgress(prev => ({ ...prev, xp: freshUser.xp, level: freshUser.level, role: freshUser.role }));
+              }
+          }
+      } catch (error) {
+          console.error('Sync failed:', error);
+      } finally {
+          syncingRef.current = false;
       }
-  }, [appConfig, userProgress, modules, materials, streams, events, scenarios, allUsers, notifications]);
+  }, []); // No dependencies — stable reference
 
   useEffect(() => {
       syncData();
-      const interval = setInterval(syncData, 15000); 
+      const interval = setInterval(syncData, 120000); // Sync every 2 minutes instead of 15 seconds
       return () => clearInterval(interval);
   }, [syncData]);
 
 
   useEffect(() => {
     const root = document.documentElement;
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
     if (userProgress.theme === 'DARK') {
         root.classList.add('dark');
-        telegram.setBackgroundColor('#050505');
-        telegram.setHeaderColor('#050505');
+        telegram.setBackgroundColor('#000000');
+        telegram.setHeaderColor('#000000');
+        themeMeta?.setAttribute('content', '#000000');
     } else {
         root.classList.remove('dark');
-        telegram.setBackgroundColor('#F3F4F6');
-        telegram.setHeaderColor('#F3F4F6');
+        telegram.setBackgroundColor('#F2F2F7');
+        telegram.setHeaderColor('#F2F2F7');
+        themeMeta?.setAttribute('content', '#F2F2F7');
     }
   }, [userProgress.theme]);
 
@@ -291,23 +326,13 @@ const App: React.FC = () => {
 
   return (
       <div className="flex flex-col h-[100dvh] bg-body text-text-primary transition-colors duration-300 overflow-hidden relative">
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-          <video 
-              autoPlay 
-              loop 
-              muted 
-              playsInline 
-              className="w-full h-full object-cover filter blur-sm opacity-30 dark:opacity-20 scale-110"
-              src="https://assets.mixkit.co/videos/preview/mixkit-stars-in-space-background-1610-large.mp4"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-body/40 to-body"></div>
-      </div>
 
       <div className="fixed top-[var(--safe-top)] left-4 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
         {toasts.map(t => <Toast key={t.id} toast={t} onRemove={removeToast} onClick={() => handleNavigate(t.link)} />)}
       </div>
 
       <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative z-10">
+        <Suspense fallback={<LoadingFallback />}>
         {activeLesson ? (
            <div className="animate-slide-up min-h-full bg-body relative z-10">
              <LessonView 
@@ -385,15 +410,12 @@ const App: React.FC = () => {
               )}
 
               {activeTab === Tab.MODULES && (
-                  <div className="px-6 pt-10 pb-32 max-w-2xl mx-auto space-y-8 animate-fade-in">
-                      <div className="flex items-center gap-4">
-                          <button onClick={() => setActiveTab(Tab.HOME)} className="w-10 h-10 rounded-2xl bg-surface border border-border-color flex items-center justify-center active:scale-90 transition-transform">
-                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                  <div className="px-4 pt-6 pb-28 max-w-2xl mx-auto space-y-6 animate-fade-in">
+                      <div className="flex items-center gap-3">
+                          <button onClick={() => setActiveTab(Tab.HOME)} className="w-10 h-10 rounded-xl bg-surface border border-border-color flex items-center justify-center active:scale-95 transition-transform">
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                           </button>
-                          <div>
-                              <span className="text-[#6C5DD3] text-[10px] font-black uppercase tracking-[0.3em] mb-1 block">Full Course</span>
-                              <h1 className="text-3xl font-black text-text-primary tracking-tighter">ВСЕ МОДУЛИ</h1>
-                          </div>
+                          <h1 className="text-2xl font-bold text-text-primary">Все модули</h1>
                       </div>
                       <ModuleList modules={modules} userProgress={userProgress} onSelectLesson={(l) => setSelectedLessonId(l.id)} onBack={() => setActiveTab(Tab.HOME)} />
                   </div>
@@ -438,6 +460,7 @@ const App: React.FC = () => {
               )}
            </div>
         )}
+        </Suspense>
       </main>
 
       <SmartNav 

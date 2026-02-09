@@ -73,8 +73,8 @@ export const CacheClearer: React.FC<CacheClearerProps> = ({ onCacheCleared }) =>
         disabled={isClearing}
         className={`w-full px-6 py-3 rounded-xl font-semibold transition-all ${
           isClearing
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-gradient-to-r from-red-500 to-orange-500 hover:shadow-lg active:scale-95'
+            ? 'bg-text-secondary cursor-not-allowed'
+            : 'bg-[#FF3B30] hover:shadow-lg active:scale-95'
         } text-white`}
       >
         {isClearing ? '⏳ Очищаем...' : '🧹 Очистить кэш и перезагрузить'}
@@ -82,7 +82,7 @@ export const CacheClearer: React.FC<CacheClearerProps> = ({ onCacheCleared }) =>
 
       {message && (
         <div className={`mt-4 p-3 rounded-lg text-sm ${
-          message.includes('✅') ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'
+          message.includes('✅') ? 'bg-[#34C759]/10 text-[#34C759]' : 'bg-[#FF3B30]/10 text-[#FF3B30]'
         }`}>
           {message}
         </div>

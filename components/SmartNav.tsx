@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Tab, UserRole, AppNotification, SmartNavAction } from '../types';
 import { telegram } from '../services/telegramService';
 
@@ -13,12 +13,12 @@ interface SmartNavProps {
   onExitLesson: () => void;
   notifications: AppNotification[];
   onClearNotifications: () => void;
-  action?: SmartNavAction | null; 
+  action?: SmartNavAction | null;
 }
 
-export const SmartNav: React.FC<SmartNavProps> = ({ 
-  activeTab, 
-  setActiveTab, 
+export const SmartNav: React.FC<SmartNavProps> = ({
+  activeTab,
+  setActiveTab,
   role,
   adminSubTab,
   setAdminSubTab,
@@ -28,263 +28,182 @@ export const SmartNav: React.FC<SmartNavProps> = ({
   onClearNotifications,
   action
 }) => {
-  const [expandedPanel, setExpandedPanel] = useState<'NONE' | 'ADMIN' | 'NOTIFICATIONS'>('NONE');
-  
-  // Swipe State
-  const touchStart = useRef<{ x: number, y: number } | null>(null);
-  const swipeThreshold = 40;
-
-  const isMainTab = [Tab.HOME, Tab.PROFILE, Tab.ADMIN_DASHBOARD].includes(activeTab);
-  const showBackButton = isLessonActive || (!isMainTab && !isLessonActive);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   useEffect(() => {
       if (activeTab === Tab.ADMIN_DASHBOARD) {
-          setExpandedPanel('ADMIN');
-      } else if (expandedPanel === 'ADMIN') {
-          setExpandedPanel('NONE');
+          setShowAdmin(true);
+      } else {
+          setShowAdmin(false);
       }
   }, [activeTab]);
 
-  const toggleNotifications = () => {
+  const handleTabClick = (tab: Tab) => {
       telegram.haptic('selection');
-      setExpandedPanel(prev => prev === 'NOTIFICATIONS' ? 'NONE' : 'NOTIFICATIONS');
+      if (isLessonActive) onExitLesson();
+      setActiveTab(tab);
+      setShowNotifications(false);
   };
 
   const handleBack = () => {
       telegram.haptic('medium');
-      if (expandedPanel !== 'NONE') {
-          setExpandedPanel('NONE');
-          return;
-      }
+      if (showNotifications) { setShowNotifications(false); return; }
       if (isLessonActive) onExitLesson();
-      else if (!isMainTab) setActiveTab(Tab.HOME);
+      else setActiveTab(Tab.HOME);
   };
 
-  const handleTabClick = (tab: Tab) => {
-      telegram.haptic('selection');
-      if (isLessonActive) onExitLesson(); 
-      setActiveTab(tab);
-      if (tab !== Tab.ADMIN_DASHBOARD && expandedPanel === 'ADMIN') setExpandedPanel('NONE');
-      if (expandedPanel === 'NOTIFICATIONS') setExpandedPanel('NONE');
-  };
-
-  // --- SWIPE HANDLERS ---
-  const onTouchStart = (e: React.TouchEvent) => {
-      touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  };
-
-  const onTouchEnd = (e: React.TouchEvent) => {
-      if (!touchStart.current) return;
-      const touchEnd = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-      
-      const deltaX = touchEnd.x - touchStart.current.x;
-      const deltaY = touchEnd.y - touchStart.current.y;
-
-      // Swipe Right (Back)
-      if (deltaX > swipeThreshold && Math.abs(deltaY) < swipeThreshold) {
-          handleBack();
-      }
-      
-      // Swipe Down (Collapse)
-      if (deltaY > swipeThreshold) {
-          if (expandedPanel !== 'NONE') {
-              setExpandedPanel('NONE');
-              telegram.haptic('light');
-          }
-      }
-
-      touchStart.current = null;
-  };
-
-  // --- RENDER HELPERS ---
-
-  const renderAdminLinks = () => (
-      <div className="flex gap-2 px-2 pb-2 justify-center animate-fade-in w-full overflow-x-auto no-scrollbar">
-         {[
-            { id: 'OVERVIEW', icon: '📊' },
-            { id: 'COURSE', icon: '🎓' },
-            { id: 'ARENA', icon: '⚔️' },
-            { id: 'STREAMS', icon: '📡' }, // Added Streams/Events
-            { id: 'USERS', icon: '👥' },
-            { id: 'SETTINGS', icon: '⚙️' },
-         ].map(link => (
-             <button
-                key={link.id}
-                onClick={() => { telegram.haptic('light'); setAdminSubTab(link.id); }}
-                className={`flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 ${
-                    adminSubTab === link.id 
-                    ? 'bg-[#6C5DD3] text-white scale-110 shadow-lg shadow-[#6C5DD3]/40' 
-                    : 'bg-white/5 text-white/40 hover:bg-white/10'
-                }`}
-             >
-                 <span className="text-sm">{link.icon}</span>
-             </button>
-         ))}
-      </div>
-  );
-
-  const renderNotifications = () => (
-      <div className="px-4 pb-4 pt-1 max-h-[50vh] overflow-y-auto custom-scrollbar animate-fade-in w-full">
-          <div className="flex justify-between items-center mb-3">
-              <span className="text-[9px] font-black uppercase text-white/40 tracking-widest">Центр связи</span>
-              <button onClick={onClearNotifications} className="text-[9px] text-white/40 font-bold hover:text-white transition-colors">Очистить</button>
-          </div>
-          {notifications.length === 0 ? (
-              <div className="py-4 text-center text-white/20 text-[10px] font-bold uppercase">Нет новых сообщений</div>
-          ) : (
-              <div className="space-y-2">
-                  {notifications.map(n => (
-                      <div key={n.id} className={`p-3 rounded-2xl flex gap-3 transition-all ${
-                          n.type === 'ALERT' ? 'bg-red-500/20 border border-red-500/30' : 'bg-white/5 border border-white/5'
-                      }`}>
-                          <div className={`w-1.5 h-1.5 mt-1.5 rounded-full flex-shrink-0 ${n.type === 'ALERT' ? 'bg-red-500' : 'bg-[#6C5DD3]'}`}></div>
-                          <div className="flex-1">
-                              <h4 className="text-[11px] font-bold text-white leading-tight mb-0.5">{n.title}</h4>
-                              <p className="text-[9px] text-white/60 leading-snug">{n.message}</p>
-                          </div>
-                      </div>
-                  ))}
-              </div>
-          )}
-      </div>
-  );
+  const isMainTab = [Tab.HOME, Tab.PROFILE, Tab.ADMIN_DASHBOARD].includes(activeTab);
+  const showBackButton = isLessonActive || (!isMainTab && !isLessonActive);
 
   const renderAction = () => {
       if (!action) return null;
-      
-      const variantClasses = {
+      const variantClasses: Record<string, string> = {
           primary: 'bg-[#6C5DD3]',
-          success: 'bg-[#00B050]',
-          danger: 'bg-red-600'
+          success: 'bg-[#34C759]',
+          danger: 'bg-[#FF3B30]'
       };
-      
       return (
-          <button 
-              onClick={action.onClick}
-              disabled={action.loading}
-              className={`
-                  h-[44px] px-6 flex items-center justify-center gap-2 rounded-full
-                  text-white font-black uppercase text-[10px] tracking-widest shadow-lg
-                  active:scale-95 transition-all duration-300 w-full
-                  ${variantClasses[action.variant || 'primary']}
-              `}
-          >
-              {action.loading ? (
-                  <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : (
-                  <>
-                      {action.icon && <span className="text-sm">{action.icon}</span>}
-                      <span>{action.label}</span>
-                  </>
-              )}
-          </button>
+          <div className="px-4 pb-2">
+              <button
+                  onClick={action.onClick}
+                  disabled={action.loading}
+                  className={`w-full h-11 px-5 flex items-center justify-center gap-2 rounded-xl text-white font-semibold text-sm active:scale-[0.98] transition-all ${variantClasses[action.variant || 'primary']}`}
+              >
+                  {action.loading ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                      <>
+                          {action.icon && <span className="text-sm">{action.icon}</span>}
+                          <span>{action.label}</span>
+                      </>
+                  )}
+              </button>
+          </div>
       );
   };
 
-  const isExpanded = expandedPanel !== 'NONE';
-
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[100] flex justify-center pointer-events-none pb-[calc(var(--safe-bottom)+12px)]">
-      <div 
-        className="relative flex items-end justify-center w-full max-w-[360px] h-[60px]"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-      >
-        <div 
-            className={`
-                pointer-events-auto bg-[#0F1115]/95 backdrop-blur-2xl
-                shadow-[0_8px_32px_rgba(0,0,0,0.5)] border border-white/10
-                flex flex-col justify-end items-center overflow-hidden z-20
-                transition-[width,height,border-radius,transform] duration-[400ms] ease-[cubic-bezier(0.32,0.72,0,1)]
-                ${isExpanded 
-                    ? 'w-[92%] h-auto min-h-[60px] rounded-[30px] pb-2' 
-                    : action ? 'w-[200px] h-[52px] rounded-full' : 'w-[220px] h-[52px] rounded-full' 
-                }
-            `}
-        >
-            <div className={`transition-all duration-300 w-full ${isExpanded ? 'opacity-100 delay-100 pt-4' : 'opacity-0 h-0 pointer-events-none'}`}>
-                {expandedPanel === 'ADMIN' && renderAdminLinks()}
-                {expandedPanel === 'NOTIFICATIONS' && renderNotifications()}
-            </div>
+    <div className="fixed bottom-0 left-0 right-0 z-[100]">
+      {/* Notification Panel (slides up above tab bar) */}
+      {showNotifications && (
+          <div className="bg-card border border-border-color rounded-t-2xl shadow-sm mx-2 mb-0 animate-slide-up">
+              <div className="px-4 pt-3 pb-2 flex justify-between items-center border-b border-border-color">
+                  <span className="text-sm font-semibold text-text-primary">Уведомления</span>
+                  <div className="flex items-center gap-3">
+                      <button onClick={onClearNotifications} className="text-xs text-text-secondary font-medium">Очистить</button>
+                      <button onClick={() => setShowNotifications(false)} className="w-7 h-7 rounded-full bg-body flex items-center justify-center">
+                          <svg className="w-3.5 h-3.5 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                  </div>
+              </div>
+              <div className="max-h-[40vh] overflow-y-auto custom-scrollbar p-3 space-y-2">
+                  {notifications.length === 0 ? (
+                      <div className="py-6 text-center text-text-secondary text-sm">Нет уведомлений</div>
+                  ) : (
+                      notifications.map(n => (
+                          <div key={n.id} className={`p-3 rounded-xl border ${n.type === 'ALERT' ? 'bg-[#FF3B30]/5 border-[#FF3B30]/20' : 'bg-body border-border-color'}`}>
+                              <h4 className="text-sm font-medium text-text-primary mb-0.5">{n.title}</h4>
+                              <p className="text-xs text-text-secondary">{n.message}</p>
+                          </div>
+                      ))
+                  )}
+              </div>
+          </div>
+      )}
 
-            <div className={`w-full flex items-center justify-between px-1.5 h-full transition-all duration-300 ${isExpanded && expandedPanel === 'NOTIFICATIONS' ? 'opacity-0 hidden' : 'opacity-100'}`}>
-                
-                {showBackButton && (
-                    <button 
-                        onClick={handleBack}
-                        className="w-10 h-10 flex-shrink-0 rounded-full bg-white/5 flex items-center justify-center text-white hover:bg-white/10 active:scale-90 transition-all"
-                    >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
-                    </button>
-                )}
+      {/* Admin Sub-tabs */}
+      {showAdmin && activeTab === Tab.ADMIN_DASHBOARD && (
+          <div className="bg-card border-t border-border-color px-2 py-2 flex gap-1 justify-center">
+              {[
+                  { id: 'OVERVIEW', icon: '📊' },
+                  { id: 'COURSE', icon: '🎓' },
+                  { id: 'ARENA', icon: '⚔️' },
+                  { id: 'STREAMS', icon: '📡' },
+                  { id: 'USERS', icon: '👥' },
+                  { id: 'SETTINGS', icon: '⚙️' },
+              ].map(link => (
+                  <button
+                      key={link.id}
+                      onClick={() => { telegram.haptic('light'); setAdminSubTab(link.id); }}
+                      className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                          adminSubTab === link.id
+                          ? 'bg-[#6C5DD3] text-white'
+                          : 'text-text-secondary hover:bg-body'
+                      }`}
+                  >
+                      <span className="text-sm">{link.icon}</span>
+                  </button>
+              ))}
+          </div>
+      )}
 
-                <div className="flex-1 flex items-center justify-center h-full">
-                    {action ? (
-                        <div className="animate-scale-in w-full px-1">
-                            {renderAction()}
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-6">
-                            <NavButton isActive={activeTab === Tab.HOME} onClick={() => handleTabClick(Tab.HOME)} icon={<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />} />
-                            
-                            <NavButton isActive={activeTab === Tab.PROFILE} onClick={() => handleTabClick(Tab.PROFILE)} icon={<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />} extraIcon={<circle cx="12" cy="7" r="4" />} />
+      {/* Action button */}
+      {action && renderAction()}
 
-                            {role === 'ADMIN' && (
-                                <NavButton isActive={activeTab === Tab.ADMIN_DASHBOARD} onClick={() => handleTabClick(Tab.ADMIN_DASHBOARD)} icon={<path d="M12 2a10 10 0 1 0 10 10 M12 2v10l4.24-4.24" />} isAdmin />
-                            )}
-                        </div>
+      {/* iOS-style Tab Bar */}
+      <div className="bg-surface/90 backdrop-blur-md border-t border-border-color pb-[var(--safe-bottom)] px-2">
+        <div className="flex items-center justify-around h-12 max-w-lg mx-auto">
+            {showBackButton && (
+                <button onClick={handleBack} className="flex flex-col items-center justify-center w-12 h-12 text-text-secondary active:scale-90 transition-transform">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+                    <span className="text-[10px] font-medium mt-0.5">Назад</span>
+                </button>
+            )}
+
+            <TabButton
+                isActive={activeTab === Tab.HOME}
+                onClick={() => handleTabClick(Tab.HOME)}
+                label="Главная"
+                icon={<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />}
+            />
+
+            <TabButton
+                isActive={activeTab === Tab.PROFILE}
+                onClick={() => handleTabClick(Tab.PROFILE)}
+                label="Профиль"
+                icon={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>}
+            />
+
+            {/* Notifications */}
+            <button
+                onClick={() => { telegram.haptic('selection'); setShowNotifications(!showNotifications); }}
+                className={`flex flex-col items-center justify-center w-12 h-12 transition-colors relative ${showNotifications ? 'text-[#6C5DD3]' : 'text-text-secondary'}`}
+            >
+                <div className="relative">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#FF3B30] rounded-full"></span>
                     )}
                 </div>
-            </div>
+                <span className="text-[10px] font-medium mt-0.5">Связь</span>
+            </button>
+
+            {role === 'ADMIN' && (
+                <TabButton
+                    isActive={activeTab === Tab.ADMIN_DASHBOARD}
+                    onClick={() => handleTabClick(Tab.ADMIN_DASHBOARD)}
+                    label="Админ"
+                    icon={<path d="M12 2a10 10 0 1 0 10 10 M12 2v10l4.24-4.24" />}
+                />
+            )}
         </div>
-
-        <button
-            onClick={toggleNotifications}
-            className={`
-                pointer-events-auto absolute right-4 bottom-0 z-10
-                w-[52px] h-[52px] rounded-full 
-                bg-[#0F1115]/95 backdrop-blur-2xl border border-white/10 shadow-[0_8px_20px_rgba(0,0,0,0.3)]
-                flex items-center justify-center text-white
-                transition-all duration-[400ms] ease-[cubic-bezier(0.32,0.72,0,1)]
-                ${isExpanded 
-                    ? 'translate-x-[-100px] scale-50 opacity-0' 
-                    : 'translate-x-0 scale-100 opacity-100'
-                }
-            `}
-        >
-            <div className="relative">
-                <svg className="w-5 h-5 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-[#0F1115] animate-pulse"></span>
-                )}
-            </div>
-        </button>
-
       </div>
     </div>
   );
 };
 
-const NavButton = ({ isActive, onClick, icon, extraIcon }: any) => {
-    return (
-        <button 
-          onClick={onClick} 
-          className={`
-            relative w-10 h-10 flex items-center justify-center transition-all duration-300 group
-            ${isActive ? 'text-white scale-110' : 'text-white/40 hover:text-white'}
-          `}
-        >
-          {isActive && (
-             <div className="absolute -bottom-1 w-1 h-1 bg-[#6C5DD3] rounded-full shadow-[0_0_8px_#6C5DD3]"></div>
-          )}
-          
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-              {icon}
-              {extraIcon}
-          </svg>
-        </button>
-    );
-};
+const TabButton = ({ isActive, onClick, label, icon }: { isActive: boolean; onClick: () => void; label: string; icon: React.ReactNode }) => (
+    <button
+        onClick={onClick}
+        className={`flex flex-col items-center justify-center w-12 h-12 transition-colors ${isActive ? 'text-[#6C5DD3]' : 'text-text-secondary'}`}
+    >
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            {icon}
+        </svg>
+        <span className="text-[10px] font-medium mt-0.5">{label}</span>
+    </button>
+);

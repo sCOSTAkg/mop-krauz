@@ -211,21 +211,21 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
     if (!isAuthenticated) {
         return (
             <div className="flex flex-col h-full bg-body text-text-primary animate-fade-in relative p-6">
-                <button onClick={onBack} className="w-10 h-10 rounded-2xl bg-surface border border-border-color flex items-center justify-center text-text-primary mb-6">
+                <button onClick={onBack} className="w-10 h-10 rounded-2xl bg-card border border-border-color flex items-center justify-center text-text-primary mb-6">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 </button>
                 <div className="text-center mb-8">
-                    <h2 className="text-3xl font-black text-text-primary uppercase tracking-tight">Трекер Дисциплины</h2>
+                    <h2 className="text-3xl font-bold text-text-primary tracking-tight">Трекер привычек</h2>
                     <p className="text-text-secondary text-sm mt-2">Развивай полезные привычки и ставь амбициозные цели.</p>
                 </div>
                 
                 {/* Blurred Demo Content */}
-                <div className="relative overflow-hidden rounded-[2.5rem] border border-border-color bg-surface h-[300px]">
+                <div className="relative overflow-hidden rounded-2xl border border-border-color bg-card h-[300px]">
                     <div className="absolute inset-0 z-10 bg-body/20 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
-                        <div className="w-16 h-16 bg-[#6C5DD3] rounded-full flex items-center justify-center text-3xl mb-4 shadow-lg shadow-[#6C5DD3]/30">🔒</div>
-                        <h3 className="text-xl font-black text-text-primary uppercase mb-2">Доступ закрыт</h3>
-                        <p className="text-text-secondary text-xs mb-6">Авторизуйтесь, чтобы отслеживать свой прогресс и получать награды.</p>
-                        <button onClick={onBack} className="px-6 py-3 bg-[#6C5DD3] text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg">Войти в профиль</button>
+                        <div className="w-16 h-16 bg-[#6C5DD3] rounded-full flex items-center justify-center text-3xl mb-4 shadow-sm">🔒</div>
+                        <h3 className="text-xl font-semibold text-text-primary mb-2">Доступ закрыт</h3>
+                        <p className="text-text-secondary text-sm mb-6">Авторизуйтесь, чтобы отслеживать свой прогресс и получать награды.</p>
+                        <button onClick={onBack} className="px-6 py-3 bg-[#6C5DD3] text-white rounded-xl font-semibold text-sm shadow-sm">Войти в профиль</button>
                     </div>
                     {/* Fake Data Background */}
                     <div className="p-4 space-y-3 opacity-30 pointer-events-none filter blur-sm">
@@ -242,24 +242,29 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
         <div className="flex flex-col h-full bg-body text-text-primary animate-fade-in relative">
             {/* Header */}
             <div className="px-6 pt-[calc(var(--safe-top)+10px)] pb-4 flex items-center justify-between bg-body/90 backdrop-blur-md sticky top-0 z-20 border-b border-border-color">
-                <button onClick={onBack} className="w-10 h-10 rounded-2xl bg-surface border border-border-color flex items-center justify-center active:scale-90 transition-transform text-text-primary">
+                <button onClick={onBack} className="w-10 h-10 rounded-2xl bg-card border border-border-color flex items-center justify-center active:scale-90 transition-transform text-text-primary">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 </button>
-                <div className="flex bg-surface p-1 rounded-xl border border-border-color">
-                    <button 
+                <div className="flex bg-card p-1 rounded-xl border border-border-color">
+                    <button
                         onClick={() => setActiveTab('HABITS')}
-                        className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === 'HABITS' ? 'bg-[#6C5DD3] text-white shadow-lg' : 'text-text-secondary'}`}
+                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'HABITS' ? 'bg-[#6C5DD3] text-white shadow-sm' : 'text-text-secondary'}`}
                     >
                         Привычки
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('GOALS')}
-                        className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === 'GOALS' ? 'bg-[#6C5DD3] text-white shadow-lg' : 'text-text-secondary'}`}
+                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'GOALS' ? 'bg-[#6C5DD3] text-white shadow-sm' : 'text-text-secondary'}`}
                     >
                         Цели
                     </button>
                 </div>
-                <div className="w-10"></div> 
+                <button
+                    onClick={() => openModal()}
+                    className="w-10 h-10 rounded-2xl bg-[#6C5DD3] text-white flex items-center justify-center active:scale-90 transition-transform shadow-sm"
+                >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                </button>
             </div>
 
             <div className="p-4 pb-40 overflow-y-auto space-y-4 custom-scrollbar">
@@ -268,15 +273,15 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                 {activeTab === 'HABITS' && (
                     <div className="space-y-4 animate-slide-up">
                         {/* Scrollable Calendar Header for Mobile */}
-                        <div className="bg-surface px-4 py-4 rounded-3xl border border-border-color shadow-sm overflow-x-auto no-scrollbar">
+                        <div className="bg-card px-4 py-4 rounded-2xl border border-border-color shadow-sm overflow-x-auto no-scrollbar">
                             <div className="flex justify-between min-w-[300px]">
                                 {calendarDays.map((d, i) => {
                                     const iso = d.toISOString().split('T')[0];
                                     const isToday = iso === today;
                                     return (
                                         <div key={i} className={`flex flex-col items-center gap-2 ${isToday ? 'opacity-100 scale-110' : 'opacity-50'}`}>
-                                            <span className="text-[9px] font-black uppercase text-text-secondary">{['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()]}</span>
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black border transition-all ${isToday ? 'bg-[#6C5DD3] text-white border-[#6C5DD3] shadow-lg shadow-[#6C5DD3]/30' : 'border-border-color bg-body text-text-primary'}`}>
+                                            <span className="text-xs font-semibold text-text-secondary">{['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()]}</span>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold border transition-all ${isToday ? 'bg-[#6C5DD3] text-white border-[#6C5DD3] shadow-sm' : 'border-border-color bg-body text-text-primary'}`}>
                                                 {d.getDate()}
                                             </div>
                                         </div>
@@ -288,34 +293,34 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                         {habits.length === 0 && (
                             <div className="text-center py-20 opacity-40">
                                 <span className="text-6xl block mb-4 grayscale">🧘</span>
-                                <p className="text-sm font-black uppercase tracking-widest text-text-secondary">Дисциплина начинается здесь</p>
+                                <p className="text-sm font-semibold text-text-secondary">Дисциплина начинается здесь</p>
                             </div>
                         )}
 
                         <div className="space-y-3">
                             {habits.map((habit) => (
-                                <div key={habit.id} className="bg-surface border border-border-color rounded-3xl p-4 relative group shadow-sm transition-all hover:shadow-md">
+                                <div key={habit.id} className="bg-card border border-border-color rounded-2xl p-4 relative group shadow-sm transition-all hover:shadow-md">
                                     <div className="flex justify-between items-center mb-4">
                                         <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => openModal(habit)}>
-                                            <div className="w-12 h-12 rounded-2xl bg-body border border-border-color flex items-center justify-center text-2xl shadow-inner">
+                                            <div className="w-12 h-12 rounded-xl bg-body border border-border-color flex items-center justify-center text-2xl">
                                                 {habit.icon}
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-sm text-text-primary leading-tight">{habit.title}</h3>
-                                                {habit.description && <p className="text-[10px] text-text-secondary line-clamp-1 mt-0.5">{habit.description}</p>}
+                                                <h3 className="font-semibold text-sm text-text-primary leading-tight">{habit.title}</h3>
+                                                {habit.description && <p className="text-xs text-text-secondary line-clamp-1 mt-0.5">{habit.description}</p>}
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-1">
-                                            <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wide bg-orange-500/10 text-orange-500 px-2 py-1 rounded-lg border border-orange-500/20">
+                                            <div className="flex items-center gap-1 text-xs font-semibold bg-orange-500/10 text-orange-500 px-2 py-1 rounded-lg border border-orange-500/20">
                                                 <span>🔥</span> 
                                                 <span>{habit.streak}</span>
                                             </div>
-                                            <button onClick={() => deleteItem(habit.id)} className="text-[9px] text-red-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity">Удалить</button>
+                                            <button onClick={() => deleteItem(habit.id)} className="text-xs text-[#FF3B30] font-semibold opacity-0 group-hover:opacity-100 transition-opacity">Удалить</button>
                                         </div>
                                     </div>
 
                                     {/* Interaction Row - Adaptive */}
-                                    <div className="flex justify-between items-center bg-body/50 rounded-2xl p-2 overflow-x-auto no-scrollbar">
+                                    <div className="flex justify-between items-center bg-body/50 rounded-xl p-2 overflow-x-auto no-scrollbar">
                                         <div className="flex justify-between w-full min-w-[280px]">
                                             {calendarDays.map((d, i) => {
                                                 const iso = d.toISOString().split('T')[0];
@@ -328,7 +333,7 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                                                         <button 
                                                             key={i}
                                                             onClick={() => toggleHabit(habit.id, today)}
-                                                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-lg ${isDone ? 'bg-[#00B050] text-white scale-110' : 'bg-surface border border-border-color text-text-secondary hover:border-[#6C5DD3]'}`}
+                                                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shadow-sm ${isDone ? 'bg-[#34C759] text-white scale-110' : 'bg-card border border-border-color text-text-secondary hover:border-[#6C5DD3]'}`}
                                                         >
                                                             {isDone ? '✓' : ''}
                                                         </button>
@@ -336,7 +341,7 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                                                 }
                                                 return (
                                                     <div key={i} className={`w-10 h-10 flex items-center justify-center`}>
-                                                        <div className={`w-2 h-2 rounded-full ${isFuture ? 'bg-border-color' : isDone ? 'bg-[#00B050]' : 'bg-red-500/20'}`}></div>
+                                                        <div className={`w-2 h-2 rounded-full ${isFuture ? 'bg-border-color' : isDone ? 'bg-[#34C759]' : 'bg-[#FF3B30]/20'}`}></div>
                                                     </div>
                                                 );
                                             })}
@@ -354,7 +359,7 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                         {goals.length === 0 && (
                             <div className="text-center py-20 opacity-40">
                                 <span className="text-6xl block mb-4 grayscale">🎯</span>
-                                <p className="text-sm font-black uppercase tracking-widest text-text-secondary">Цели не заданы</p>
+                                <p className="text-sm font-semibold text-text-secondary">Цели не заданы</p>
                             </div>
                         )}
 
@@ -364,32 +369,30 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                                 const step = goal.targetValue > 1000 ? 1000 : goal.targetValue > 100 ? 100 : 1;
 
                                 return (
-                                    <div key={goal.id} className="bg-surface border border-border-color rounded-[2.5rem] p-6 relative overflow-hidden shadow-lg group">
+                                    <div key={goal.id} className="bg-card border border-border-color rounded-2xl p-6 relative overflow-hidden shadow-sm group">
                                         {/* Progress Background */}
                                         <div className="absolute bottom-0 left-0 h-1.5 w-full bg-body">
-                                            <div 
-                                                className="h-full transition-all duration-1000 ease-out relative"
-                                                style={{ 
-                                                    width: `${percent}%`,
-                                                    background: `linear-gradient(to right, ${goal.colorStart || '#6C5DD3'}, ${goal.colorEnd || '#FFAB7B'})` 
+                                            <div
+                                                className="h-full transition-all duration-1000 ease-out rounded-full bg-[#6C5DD3]"
+                                                style={{
+                                                    width: `${percent}%`
                                                 }}
                                             >
-                                                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-white rounded-full shadow-md"></div>
                                             </div>
                                         </div>
 
                                         <div className="flex justify-between items-start mb-6">
                                             <div onClick={() => openModal(goal)} className="cursor-pointer">
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <h3 className="font-black text-lg text-text-primary">{goal.title}</h3>
-                                                    {goal.isCompleted && <span className="text-lg animate-bounce">🏆</span>}
+                                                    <h3 className="font-semibold text-lg text-text-primary">{goal.title}</h3>
+                                                    {goal.isCompleted && <span className="text-lg">🏆</span>}
                                                 </div>
-                                                <p className="text-[10px] font-black text-text-secondary uppercase tracking-[0.2em]">
+                                                <p className="text-xs font-semibold text-text-secondary">
                                                     {goal.currentValue.toLocaleString()} / {goal.targetValue.toLocaleString()} {goal.unit}
                                                 </p>
                                             </div>
                                             <div className="text-right flex flex-col items-end">
-                                                <span className="text-3xl font-black text-[#6C5DD3]">{percent}%</span>
+                                                <span className="text-3xl font-bold text-[#6C5DD3]">{percent}%</span>
                                             </div>
                                         </div>
 
@@ -398,24 +401,24 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                                             <div className="flex gap-3">
                                                 <button 
                                                     onClick={() => updateGoalProgress(goal.id, step)}
-                                                    className="flex-1 py-3 bg-body hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-[10px] font-black border border-border-color active:scale-95 transition-all text-text-primary"
+                                                    className="flex-1 py-3 bg-body hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-semibold border border-border-color active:scale-95 transition-all text-text-primary"
                                                 >
                                                     +{step.toLocaleString()} {goal.unit}
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => updateGoalProgress(goal.id, step * 5)}
-                                                    className="flex-1 py-3 bg-body hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-[10px] font-black border border-border-color active:scale-95 transition-all text-text-primary"
+                                                    className="flex-1 py-3 bg-body hover:bg-black/5 dark:hover:bg-white/5 rounded-xl text-xs font-semibold border border-border-color active:scale-95 transition-all text-text-primary"
                                                 >
                                                     +{ (step * 5).toLocaleString() } {goal.unit}
                                                 </button>
                                             </div>
                                         ) : (
-                                            <div className="py-3 bg-[#00B050]/10 text-[#00B050] text-center rounded-xl text-xs font-black uppercase tracking-[0.2em] border border-[#00B050]/20 animate-pulse">
-                                                ДОСТИГНУТО
+                                            <div className="py-3 bg-[#34C759]/10 text-[#34C759] text-center rounded-xl text-sm font-semibold border border-[#34C759]/20">
+                                                Достигнуто
                                             </div>
                                         )}
                                         
-                                        <button onClick={() => deleteItem(goal.id)} className="absolute top-4 right-4 text-text-secondary opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity">✕</button>
+                                        <button onClick={() => deleteItem(goal.id)} className="absolute top-4 right-4 text-text-secondary opacity-0 group-hover:opacity-100 hover:text-[#FF3B30] transition-opacity">✕</button>
                                     </div>
                                 );
                             })}
@@ -427,9 +430,9 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
             {/* ADD/EDIT MODAL */}
             {isModalOpen && (
                 <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-xl flex items-end sm:items-center justify-center animate-fade-in pb-0 sm:pb-10">
-                    <div className="w-full sm:max-w-sm bg-surface rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 pb-12 border-t border-border-color shadow-2xl animate-slide-up">
+                    <div className="w-full sm:max-w-sm bg-card rounded-t-2xl sm:rounded-2xl p-8 pb-12 border-t border-border-color shadow-sm animate-slide-up">
                         <div className="flex justify-between items-center mb-8">
-                            <h3 className="text-xl font-black uppercase tracking-tight text-text-primary">
+                            <h3 className="text-xl font-semibold text-text-primary">
                                 {editingId ? 'Редактировать' : 'Создать'}
                             </h3>
                             <button onClick={closeModal} className="w-8 h-8 rounded-full bg-body flex items-center justify-center text-text-secondary hover:text-text-primary">✕</button>
@@ -437,12 +440,12 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
 
                         <div className="space-y-5">
                             <div className="space-y-1">
-                                <label className="text-[9px] font-black uppercase text-text-secondary ml-2">Название</label>
+                                <label className="text-xs font-semibold text-text-secondary ml-2">Название</label>
                                 <input 
                                     value={formTitle}
                                     onChange={e => setFormTitle(e.target.value)}
                                     placeholder="Например: Бег по утрам"
-                                    className="w-full bg-body border border-border-color p-4 rounded-2xl text-text-primary font-bold outline-none focus:border-[#6C5DD3] transition-colors"
+                                    className="w-full bg-body border border-border-color p-4 rounded-2xl text-text-primary font-semibold outline-none focus:border-[#6C5DD3] transition-colors"
                                     autoFocus
                                 />
                             </div>
@@ -450,7 +453,7 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                             {activeTab === 'HABITS' && (
                                 <>
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-black uppercase text-text-secondary ml-2">Описание</label>
+                                        <label className="text-xs font-semibold text-text-secondary ml-2">Описание</label>
                                         <input 
                                             value={formDescription}
                                             onChange={e => setFormDescription(e.target.value)}
@@ -459,13 +462,13 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-[9px] font-black uppercase text-text-secondary mb-2 block ml-2">Иконка</label>
+                                        <label className="text-xs font-semibold text-text-secondary mb-2 block ml-2">Иконка</label>
                                         <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
                                             {AVAILABLE_ICONS.map(icon => (
                                                 <button 
                                                     key={icon}
                                                     onClick={() => setFormIcon(icon)}
-                                                    className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center text-2xl border transition-all ${formIcon === icon ? 'bg-[#6C5DD3] border-[#6C5DD3] shadow-lg shadow-[#6C5DD3]/30 scale-110' : 'bg-body border-border-color'}`}
+                                                    className={`w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl border transition-all ${formIcon === icon ? 'bg-[#6C5DD3] border-[#6C5DD3] shadow-sm scale-110' : 'bg-body border-border-color'}`}
                                                 >
                                                     {icon}
                                                 </button>
@@ -478,21 +481,21 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                             {activeTab === 'GOALS' && (
                                 <div className="grid grid-cols-3 gap-3">
                                     <div className="col-span-2 space-y-1">
-                                        <label className="text-[9px] font-black uppercase text-text-secondary ml-2">Цель (число)</label>
+                                        <label className="text-xs font-semibold text-text-secondary ml-2">Цель (число)</label>
                                         <input 
                                             type="number"
                                             value={formTarget}
                                             onChange={e => setFormTarget(e.target.value)}
                                             placeholder="100000"
-                                            className="w-full bg-body border border-border-color p-4 rounded-2xl text-text-primary font-bold outline-none focus:border-[#6C5DD3]"
+                                            className="w-full bg-body border border-border-color p-4 rounded-2xl text-text-primary font-semibold outline-none focus:border-[#6C5DD3]"
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-black uppercase text-text-secondary ml-2">Ед.изм.</label>
+                                        <label className="text-xs font-semibold text-text-secondary ml-2">Ед.изм.</label>
                                         <select 
                                             value={formUnit}
                                             onChange={e => setFormUnit(e.target.value)}
-                                            className="w-full bg-body border border-border-color p-4 rounded-2xl text-text-primary font-bold outline-none h-[58px]"
+                                            className="w-full bg-body border border-border-color p-4 rounded-2xl text-text-primary font-semibold outline-none h-[58px]"
                                         >
                                             <option value="₽">₽</option>
                                             <option value="$">$</option>
@@ -504,11 +507,12 @@ export const HabitTracker: React.FC<HabitTrackerProps> = ({
                                 </div>
                             )}
                             
-                            <div className="pt-4 text-center">
-                                <p className="text-text-secondary/50 text-[9px] font-black uppercase tracking-widest">
-                                    Нажмите кнопку "Сохранить" внизу
-                                </p>
-                            </div>
+                            <button
+                                onClick={handleSave}
+                                className="w-full py-4 bg-[#6C5DD3] text-white rounded-2xl font-semibold text-sm shadow-sm active:scale-[0.98] transition-all mt-2"
+                            >
+                                {editingId ? 'Сохранить' : 'Создать'}
+                            </button>
                         </div>
                     </div>
                 </div>

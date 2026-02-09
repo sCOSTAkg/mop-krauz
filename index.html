@@ -3,9 +3,13 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="https://picsum.photos/32/32" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚔️</text></svg>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#050505" />
+    <meta name="theme-color" content="#F2F2F7" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SalesPro" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="manifest" href="/manifest.json" />
     <title>SalesPro: 300 Spartans</title>
     <!-- Tailwind CSS -->
@@ -30,25 +34,18 @@
               }
             },
             animation: {
-              'blob': 'blob 10s infinite',
-              'gradient-x': 'gradient-x 15s ease infinite',
-              'shimmer': 'shimmer 2.5s linear infinite',
-              'float': 'float 3s ease-in-out infinite',
+              'fade-in': 'fade-in 0.2s ease-out',
+              'slide-up': 'slide-up 0.3s ease-out',
             },
             keyframes: {
-              blob: {
-                '0%, 100%': { transform: 'translate(0px, 0px) scale(1)' },
-                '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+              'fade-in': {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
               },
-              float: {
-                '0%, 100%': { transform: 'translateY(0)' },
-                '50%': { transform: 'translateY(-10px)' },
+              'slide-up': {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
               },
-              shimmer: {
-                '0%': { transform: 'translateX(-100%)' },
-                '100%': { transform: 'translateX(100%)' }
-              }
             }
           }
         }
@@ -58,26 +55,26 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
       :root {
-        --bg-body: #F0F2F5;
+        --bg-body: #F2F2F7;
         --bg-surface: #FFFFFF;
         --bg-card: #FFFFFF;
-        --text-primary: #1A1C23;
-        --text-secondary: #64748B;
-        --border-color: rgba(0, 0, 0, 0.08);
-        --glass-bg: rgba(255, 255, 255, 0.8);
+        --text-primary: #000000;
+        --text-secondary: #8E8E93;
+        --border-color: rgba(0, 0, 0, 0.06);
+        --glass-bg: rgba(255, 255, 255, 0.85);
         --color-accent: #6C5DD3;
         --safe-top: env(safe-area-inset-top, 20px);
         --safe-bottom: env(safe-area-inset-bottom, 20px);
       }
 
       html.dark :root {
-        --bg-body: #030304; 
-        --bg-surface: #0F1115;
-        --bg-card: #16181D;
+        --bg-body: #000000;
+        --bg-surface: #1C1C1E;
+        --bg-card: #2C2C2E;
         --text-primary: #FFFFFF;
-        --text-secondary: #94A3B8;
-        --border-color: rgba(255, 255, 255, 0.08);
-        --glass-bg: rgba(15, 17, 21, 0.85);
+        --text-secondary: #8E8E93;
+        --border-color: rgba(255, 255, 255, 0.1);
+        --glass-bg: rgba(28, 28, 30, 0.85);
       }
 
       body {
@@ -91,26 +88,6 @@
         user-select: none;
       }
 
-      /* Animated Background Mesh */
-      .mesh-bg {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: -1;
-        overflow: hidden;
-        background: var(--bg-body);
-      }
-
-      .mesh-orb {
-        position: absolute;
-        border-radius: 50%;
-        filter: blur(80px);
-        opacity: 0.15;
-        pointer-events: none;
-      }
-
       .custom-scrollbar::-webkit-scrollbar { width: 4px; }
       .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       .custom-scrollbar::-webkit-scrollbar-thumb {
@@ -121,22 +98,19 @@
       .no-scrollbar::-webkit-scrollbar { display: none; }
 
       .island-blur {
-        backdrop-filter: blur(24px) saturate(180%);
-        -webkit-backdrop-filter: blur(24px) saturate(180%);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 
-            0 4px 6px -1px rgba(0, 0, 0, 0.1),
-            0 20px 40px -10px rgba(0, 0, 0, 0.4),
-            inset 0 1px 1px rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--border-color);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       }
 
       @keyframes slide-up-island {
-        from { transform: translateY(100px) scale(0.9); opacity: 0; }
-        to { transform: translateY(0) scale(1); opacity: 1; }
+        from { transform: translateY(10px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
       }
 
       .animate-island {
-        animation: slide-up-island 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        animation: slide-up-island 0.3s ease-out forwards;
       }
     </style>
   <script type="importmap">
@@ -156,11 +130,6 @@
 </script>
 </head>
   <body>
-    <div class="mesh-bg">
-        <div class="mesh-orb w-[80%] h-[80%] -top-[20%] -left-[20%] bg-[#6C5DD3] animate-blob"></div>
-        <div class="mesh-orb w-[70%] h-[70%] top-[40%] -right-[10%] bg-[#FFAB7B] animate-blob" style="animation-delay: -3s"></div>
-        <div class="mesh-orb w-[60%] h-[60%] -bottom-[10%] left-[20%] bg-[#4F46E5] animate-blob" style="animation-delay: -6s"></div>
-    </div>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

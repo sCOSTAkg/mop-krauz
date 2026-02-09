@@ -45,6 +45,15 @@ export default defineConfig(({ mode }) => {
             if (id.includes('/components/LessonView')) {
               return 'lesson-chunk';
             }
+            if (id.includes('/components/SalesArena') || id.includes('/services/geminiService')) {
+              return 'arena-chunk';
+            }
+            if (id.includes('/components/HabitTracker')) {
+              return 'habits-chunk';
+            }
+            if (id.includes('/components/VideoHub')) {
+              return 'video-chunk';
+            }
           },
 
           // Hash-based filenames для кэширования

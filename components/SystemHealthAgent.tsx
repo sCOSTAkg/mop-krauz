@@ -144,7 +144,7 @@ export const SystemHealthAgent: React.FC<SystemHealthAgentProps> = ({
 
     return (
         <div className={`fixed bottom-24 right-4 z-[150] transition-all duration-500 ease-out transform ${isVisible ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-0 pointer-events-none'}`}>
-            <div className="bg-[#14161B]/95 backdrop-blur-xl border border-[#6C5DD3]/40 p-4 rounded-2xl shadow-[0_0_30px_rgba(108,93,211,0.2)] flex items-center gap-4 max-w-[300px] relative overflow-hidden">
+            <div className="bg-card/95 backdrop-blur-xl border border-[#6C5DD3]/40 p-4 rounded-2xl shadow-[0_0_30px_rgba(108,93,211,0.2)] flex items-center gap-4 max-w-[300px] relative overflow-hidden">
                 
                 {/* Scanning Light Effect */}
                 {status === 'ANALYZING' && <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#6C5DD3] to-transparent animate-[shimmer_2s_infinite]"></div>}
@@ -152,7 +152,7 @@ export const SystemHealthAgent: React.FC<SystemHealthAgentProps> = ({
                 {/* Agent Avatar */}
                 <div className="relative w-12 h-12 flex-shrink-0 flex items-center justify-center">
                     <div className={`absolute inset-0 rounded-full opacity-30 animate-ping ${status === 'SLEEPING' ? 'bg-green-500' : status === 'EXECUTING' ? 'bg-[#D4AF37]' : 'bg-[#6C5DD3]'}`}></div>
-                    <div className={`relative z-10 w-10 h-10 rounded-full border-2 flex items-center justify-center text-lg font-black shadow-inner transition-colors ${
+                    <div className={`relative z-10 w-10 h-10 rounded-full border-2 flex items-center justify-center text-lg font-bold transition-colors ${
                         status === 'SLEEPING' ? 'border-green-500 text-green-500 bg-green-500/10' :
                         status === 'EXECUTING' ? 'border-[#D4AF37] text-[#D4AF37] bg-[#D4AF37]/10' :
                         'border-[#6C5DD3] text-[#6C5DD3] bg-[#6C5DD3]/10'
@@ -163,20 +163,20 @@ export const SystemHealthAgent: React.FC<SystemHealthAgentProps> = ({
 
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
-                        <h4 className={`text-[10px] font-black uppercase tracking-widest ${
+                        <h4 className={`text-[10px] font-bold uppercase tracking-wide ${
                             status === 'SLEEPING' ? 'text-green-500' :
                             status === 'EXECUTING' ? 'text-[#D4AF37]' :
                             'text-[#6C5DD3]'
                         }`}>
                             {status === 'SLEEPING' ? 'SYSTEM CORE' : status === 'EXECUTING' ? 'OPTIMIZING' : 'ANALYZING'}
                         </h4>
-                        <span className="text-[8px] text-white/30 font-mono">{new Date().toLocaleTimeString([], {minute:'2-digit', second:'2-digit'})}</span>
+                        <span className="text-[8px] text-text-secondary/50 font-mono">{new Date().toLocaleTimeString([], {minute:'2-digit', second:'2-digit'})}</span>
                     </div>
-                    <p className="text-white/90 text-xs font-bold leading-tight truncate animate-pulse">
+                    <p className="text-text-primary text-xs font-bold leading-tight truncate animate-pulse">
                         {agentMessage || 'Ожидание...'}
                     </p>
                     {lastAction && status === 'COOLDOWN' && (
-                        <p className="text-[9px] text-white/50 mt-1 uppercase">Исправлено: {lastAction}</p>
+                        <p className="text-[9px] text-text-secondary/70 mt-1 uppercase">Исправлено: {lastAction}</p>
                     )}
                 </div>
             </div>

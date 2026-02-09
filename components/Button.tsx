@@ -19,15 +19,15 @@ export const Button: React.FC<ButtonProps> = ({
   ...props 
 }) => {
   // Base styles including focus states for accessibility
-  const baseStyles = "relative py-3.5 px-6 rounded-2xl font-bold text-sm transition-all duration-200 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2 focus:outline-none focus:ring-4 focus:ring-[#6C5DD3]/20";
+  const baseStyles = "relative py-3.5 px-6 rounded-xl font-semibold text-sm transition-all duration-200 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2 focus:outline-none focus:ring-4 focus:ring-[#6C5DD3]/20";
   
   // Variants matching the Spartan/Dark theme
   const variants = {
-    primary: "bg-[#6C5DD3] text-white hover:bg-[#5b4eb5] shadow-lg shadow-[#6C5DD3]/30 hover:shadow-[#6C5DD3]/50 border border-transparent",
-    secondary: "bg-white text-[#1A1A1A] hover:bg-slate-50 border border-slate-100 shadow-sm shadow-slate-200/20 hover:shadow-md hover:shadow-slate-200/40",
-    outline: "bg-transparent border-2 border-[#6C5DD3] text-[#6C5DD3] hover:bg-[#6C5DD3]/5 shadow-none",
-    ghost: "bg-transparent text-slate-500 hover:text-[#6C5DD3] hover:bg-[#6C5DD3]/10 shadow-none",
-    danger: "bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/30 hover:shadow-red-500/50 border border-transparent"
+    primary: "bg-[#6C5DD3] text-white hover:bg-[#5b4eb5] shadow-sm border border-transparent",
+    secondary: "bg-card text-text-primary hover:bg-body border border-border-color shadow-sm",
+    outline: "bg-transparent border border-[#6C5DD3] text-[#6C5DD3] hover:bg-[#6C5DD3]/5 shadow-none",
+    ghost: "bg-transparent text-text-secondary hover:text-[#6C5DD3] hover:bg-[#6C5DD3]/10 shadow-none",
+    danger: "bg-[#FF3B30] text-white hover:bg-[#E0342B] shadow-sm border border-transparent"
   };
 
   const widthClass = fullWidth ? 'w-full' : 'w-auto';

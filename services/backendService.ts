@@ -1,13 +1,13 @@
 import { UserProgress, AppConfig, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification } from '../types';
-import { COURSE_MODULES, MOCK_MATERIALS, MOCK_STREAMS, MOCK_EVENTS } from '../constants';
 import { Logger } from './logger';
 import { airtableService } from './airtableService';
+import { Storage } from './storage';
 
 // Retry configuration
 const RETRY_CONFIG = {
-  maxRetries: 3,
-  retryDelay: 1000,
-  timeout: 10000
+  maxRetries: 1,
+  retryDelay: 500,
+  timeout: 8000
 };
 
 // Helper function for retry logic
@@ -45,25 +45,31 @@ export const Backend = {
     try {
       Logger.log('📄 Fetching all content from Airtable...');
 
-      // Fetch all data with retry logic
-      const [modules, materials, streams] = await Promise.all([
-        retryWithBackoff(() => airtableService.fetchModules()).catch(e => {
-          Logger.log('⚠️ Modules fetch failed, using COURSE_MODULES', e);
-          return COURSE_MODULES;
-        }),
-        retryWithBackoff(() => airtableService.fetchMaterials()).catch(e => {
-          Logger.log('⚠️ Materials fetch failed, using MOCK_MATERIALS', e);
-          return MOCK_MATERIALS;
-        }),
-        retryWithBackoff(() => airtableService.fetchStreams()).catch(e => {
-          Logger.log('⚠️ Streams fetch failed, using MOCK_STREAMS', e);
-          return MOCK_STREAMS;
-        })
+      // Fetch all data with retry logic — each fetch is independent
+      const [modsResult, matsResult, strsResult, evtsResult, scensResult] = await Promise.allSettled([
+        retryWithBackoff(() => airtableService.fetchModules()),
+        retryWithBackoff(() => airtableService.fetchMaterials()),
+        retryWithBackoff(() => airtableService.fetchStreams()),
+        retryWithBackoff(() => airtableService.fetchEvents()),
+        retryWithBackoff(() => airtableService.fetchScenarios())
       ]);
 
-      // Events and scenarios fallback to mocks for now
-      const events = MOCK_EVENTS;
-      const scenarios = [];
+      const mods = modsResult.status === 'fulfilled' ? modsResult.value : [];
+      const mats = matsResult.status === 'fulfilled' ? matsResult.value : [];
+      const strs = strsResult.status === 'fulfilled' ? strsResult.value : [];
+      const evts = evtsResult.status === 'fulfilled' ? evtsResult.value : [];
+      const scens = scensResult.status === 'fulfilled' ? scensResult.value : [];
+
+      if (modsResult.status === 'rejected') Logger.log('⚠️ Modules fetch failed', modsResult.reason);
+      if (matsResult.status === 'rejected') Logger.log('⚠️ Materials fetch failed', matsResult.reason);
+      if (strsResult.status === 'rejected') Logger.log('⚠️ Streams fetch failed', strsResult.reason);
+
+      // Always prefer remote data, fall back to cache (never to hardcoded constants)
+      const modules = mods.length > 0 ? mods : Storage.get<Module[]>('courseModules', []);
+      const materials = mats.length > 0 ? mats : Storage.get<Material[]>('materials', []);
+      const streams = strs.length > 0 ? strs : Storage.get<Stream[]>('streams', []);
+      const events = evts.length > 0 ? evts : Storage.get<CalendarEvent[]>('events', []);
+      const scenarios = scens.length > 0 ? scens : Storage.get<ArenaScenario[]>('scenarios', []);
 
       Logger.log('✅ Content loaded:', {
         modules: modules.length,
@@ -76,13 +82,13 @@ export const Backend = {
       return { modules, materials, streams, events, scenarios };
 
     } catch (error) {
-      Logger.log('❌ Failed to fetch content, using all fallbacks', error);
+      Logger.log('❌ Failed to fetch content, using cache fallback', error);
 
       return {
-        modules: COURSE_MODULES,
-        materials: MOCK_MATERIALS,
-        streams: MOCK_STREAMS,
-        events: MOCK_EVENTS,
+        modules: Storage.get<Module[]>('courseModules', []),
+        materials: Storage.get<Material[]>('materials', []),
+        streams: Storage.get<Stream[]>('streams', []),
+        events: Storage.get<CalendarEvent[]>('events', []),
         scenarios: []
       };
     }
@@ -125,30 +131,61 @@ export const Backend = {
   },
 
   async getLeaderboard(): Promise<UserProgress[]> {
-    // getLeaderboard doesn't exist in airtableService
-    Logger.log('📦 getLeaderboard not implemented in Airtable service');
-    return [];
+    try {
+      return await retryWithBackoff(() => airtableService.getLeaderboard());
+    } catch (error) {
+      Logger.log('⚠️ Failed to fetch leaderboard from Airtable', error);
+      return [];
+    }
   },
 
-  async saveCollection(type: string, data: any): Promise<void> {
-    // saveCollection doesn't exist in airtableService
-    Logger.log(`📦 saveCollection(\"${type}\") not implemented - using LocalStorage only`);
+  async saveCollection(type: string, data: any[]): Promise<void> {
+    Logger.log(`📦 saveCollection("${type}") - saving ${data.length} items`);
+
+    // Always persist to localStorage first
+    Storage.set(type === 'modules' ? 'courseModules' : type, data);
+
+    try {
+      switch (type) {
+        case 'modules': {
+          // Save all modules in parallel
+          await Promise.all(data.map((mod, i) =>
+            airtableService.saveModule(mod as Module, i)
+          ));
+          // Save all lessons in parallel
+          const lessonPromises = data.flatMap((mod, i) => {
+            const m = mod as Module;
+            return (m.lessons || []).map((lesson, li) =>
+              airtableService.saveLesson(lesson, m.id, li)
+            );
+          });
+          if (lessonPromises.length > 0) await Promise.all(lessonPromises);
+          Logger.log('✅ Modules + lessons saved to Airtable');
+          break;
+        }
+        default:
+          Logger.log(`📦 saveCollection("${type}") - Airtable save not implemented, localStorage only`);
+      }
+    } catch (error) {
+      Logger.error(`Failed to save collection "${type}" to Airtable`, error);
+    }
   },
 
   async fetchNotifications(): Promise<AppNotification[]> {
-    // fetchNotifications doesn't exist in airtableService  
-    Logger.log('📦 fetchNotifications not implemented in Airtable service');
-    return [];
+    try {
+      return await retryWithBackoff(() => airtableService.fetchNotifications());
+    } catch (error) {
+      Logger.log('⚠️ Failed to fetch notifications from Airtable', error);
+      return [];
+    }
   },
 
   async sendBroadcast(notification: AppNotification): Promise<void> {
-    // sendBroadcast doesn't exist in airtableService
-    Logger.log('📦 sendBroadcast not implemented in Airtable service');
+    Logger.log('📦 sendBroadcast - not fully implemented for Airtable yet');
   },
 
   async saveGlobalConfig(config: AppConfig): Promise<void> {
-    // saveGlobalConfig doesn't exist in airtableService
-    Logger.log('📦 saveGlobalConfig not implemented - using LocalStorage only');
+    Logger.log('📦 saveGlobalConfig - using LocalStorage fallback');
   },
 
   // Health check для диагностики

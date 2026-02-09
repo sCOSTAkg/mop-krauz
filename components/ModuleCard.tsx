@@ -24,7 +24,7 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({ module, onClick, isLocke
     <div
       onClick={!isLocked ? onClick : undefined}
       className={`relative group rounded-2xl overflow-hidden backdrop-blur-xl transition-all duration-300 
-        ${isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105 hover:shadow-2xl'}`}
+        ${isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02] hover:shadow-md'}`}
     >
       {/* Background gradient */}
       <div className={`absolute inset-0 bg-gradient-to-br ${getCategoryColor(module.category)} opacity-20`} />
