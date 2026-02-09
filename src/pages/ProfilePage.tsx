@@ -1,6 +1,5 @@
 import React, { Suspense } from 'react';
 import { useAppContext } from '../App';
-import { Tab } from '../types';
 
 const Profile = React.lazy(() => import('../components/Profile').then(m => ({ default: m.Profile })));
 
