@@ -12,41 +12,35 @@ interface ModuleListProps {
 
 const getYouTubeThumbnail = (url?: string) => {
     if (!url) return null;
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[2].length === 11)
-      ? `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg`
-      : null;
+    const match = url.match(/^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
+    return match?.[2]?.length === 11 ? `https://img.youtube.com/vi/${match[2]}/mqdefault.jpg` : null;
 };
 
-const CATEGORY_EMOJI: Record<ModuleCategory, string> = {
-    SALES: '\u{1F4B0}',
-    PSYCHOLOGY: '\u{1F9E0}',
-    TACTICS: '\u2694\uFE0F',
-    GENERAL: '\u{1F4DA}'
+const CATEGORY_META: Record<ModuleCategory, { emoji: string; label: string; color: string }> = {
+    SALES:      { emoji: '\u{1F4B0}', label: 'Продажи',    color: '#FF9500' },
+    PSYCHOLOGY: { emoji: '\u{1F9E0}', label: 'Психология',  color: '#AF52DE' },
+    TACTICS:    { emoji: '\u2694\uFE0F', label: 'Тактика',    color: '#FF3B30' },
+    GENERAL:    { emoji: '\u{1F4DA}', label: 'База',        color: '#007AFF' },
 };
 
-export const ModuleList: React.FC<ModuleListProps> = React.memo(({ modules, userProgress, onSelectLesson }: ModuleListProps) => {
+export const ModuleList: React.FC<ModuleListProps> = React.memo(({ modules, userProgress, onSelectLesson }) => {
   const [shakingId, setShakingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleModuleClick = (module: Module) => {
-    const isLevelLocked = userProgress.level < module.minLevel;
-    const isAuthenticated = userProgress.isAuthenticated;
+    const isLocked = !userProgress.isAuthenticated || userProgress.level < module.minLevel;
 
-    if (isLevelLocked || !isAuthenticated) {
+    if (isLocked) {
         setShakingId(module.id);
         telegram.haptic('error');
         setTimeout(() => setShakingId(null), 500);
-
-        if (!isAuthenticated) telegram.showAlert('\u0410\u0432\u0442\u043E\u0440\u0438\u0437\u0443\u0439\u0442\u0435\u0441\u044C, \u0447\u0442\u043E\u0431\u044B \u043D\u0430\u0447\u0430\u0442\u044C \u043E\u0431\u0443\u0447\u0435\u043D\u0438\u0435.', '\u0414\u043E\u0441\u0442\u0443\u043F \u0437\u0430\u043A\u0440\u044B\u0442');
-        else telegram.showAlert(`\u041D\u0435\u043E\u0431\u0445\u043E\u0434\u0438\u043C \u0443\u0440\u043E\u0432\u0435\u043D\u044C ${module.minLevel}. \u0412\u044B\u043F\u043E\u043B\u043D\u044F\u0439\u0442\u0435 \u0437\u0430\u0434\u0430\u043D\u0438\u044F \u043F\u0440\u0435\u0434\u044B\u0434\u0443\u0449\u0438\u0445 \u043C\u043E\u0434\u0443\u043B\u0435\u0439.`, '\u0420\u0430\u043D\u043E, \u0431\u043E\u0435\u0446');
-
+        if (!userProgress.isAuthenticated) telegram.showAlert('Авторизуйтесь, чтобы начать обучение.', 'Доступ закрыт');
+        else telegram.showAlert(`Необходим уровень ${module.minLevel}. Завершайте предыдущие модули.`, 'Рано, боец');
         return;
     }
 
     telegram.haptic('selection');
-    setExpandedId(expandedId === module.id ? null : module.id);
+    setExpandedId(prev => prev === module.id ? null : module.id);
   };
 
   const handleLessonClick = (e: React.MouseEvent, lesson: Lesson) => {
@@ -55,155 +49,196 @@ export const ModuleList: React.FC<ModuleListProps> = React.memo(({ modules, user
       onSelectLesson(lesson);
   };
 
-  // Empty state
   if (modules.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-[#6C5DD3]/10 flex items-center justify-center text-3xl mb-4">
-          {'\u{1F4DA}'}
-        </div>
-        <h3 className="text-lg font-semibold text-text-primary mb-2">{'\u041F\u0440\u043E\u0433\u0440\u0430\u043C\u043C\u0430 \u0444\u043E\u0440\u043C\u0438\u0440\u0443\u0435\u0442\u0441\u044F'}</h3>
-        <p className="text-sm text-text-secondary max-w-xs">
-          {'\u041C\u043E\u0434\u0443\u043B\u0438 \u043F\u043E\u044F\u0432\u044F\u0442\u0441\u044F \u0437\u0434\u0435\u0441\u044C \u043F\u043E\u0441\u043B\u0435 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u0438\u044F \u0430\u0434\u043C\u0438\u043D\u0438\u0441\u0442\u0440\u0430\u0442\u043E\u0440\u043E\u043C.'}
-        </p>
+        <div className="w-16 h-16 rounded-2xl bg-[#6C5DD3]/10 flex items-center justify-center text-3xl mb-4">{'\u{1F4DA}'}</div>
+        <h3 className="text-lg font-semibold text-text-primary mb-2">Программа формируется</h3>
+        <p className="text-sm text-text-secondary max-w-xs">Модули появятся после добавления администратором.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 pb-28">
-        {modules.map((module) => {
-            const isLevelLocked = userProgress.level < module.minLevel;
-            const isAuthenticated = userProgress.isAuthenticated;
-            const isLocked = (isLevelLocked || !isAuthenticated);
-
+    <div className="space-y-3 pb-28">
+        {modules.map((module, idx) => {
+            const isLocked = !userProgress.isAuthenticated || userProgress.level < module.minLevel;
             const completedCount = module.lessons.filter(l => userProgress.completedLessonIds.includes(l.id)).length;
             const totalCount = module.lessons.length;
             const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
             const isCompleted = progressPercent === 100;
             const isExpanded = expandedId === module.id;
-
             const bgImage = module.imageUrl || getYouTubeThumbnail(module.videoUrl);
-            const categoryEmoji = CATEGORY_EMOJI[module.category] || '\u{1F4DA}';
+            const cat = CATEGORY_META[module.category] || CATEGORY_META.GENERAL;
 
             return (
                 <div
                     key={module.id}
-                    onClick={() => handleModuleClick(module)}
                     className={`
-                        group relative w-full overflow-hidden rounded-2xl
-                        bg-card shadow-sm hover:shadow-md
-                        transition-all duration-300
-                        border border-border-color cursor-pointer
+                        relative overflow-hidden rounded-2xl bg-card
+                        border border-border-color
+                        transition-all duration-300 ease-out
                         ${shakingId === module.id ? 'animate-shake' : ''}
-                        ${isExpanded ? 'row-span-2' : ''}
+                        ${isExpanded ? 'shadow-md' : 'shadow-sm'}
                     `}
                 >
-                    <div className={`relative flex flex-col h-full ${isExpanded ? 'min-h-[400px]' : 'aspect-[16/10]'}`}>
+                    {/* MODULE CARD HEADER — clickable */}
+                    <div
+                        onClick={() => handleModuleClick(module)}
+                        className="relative cursor-pointer active:scale-[0.99] transition-transform"
+                    >
+                        {/* Background image */}
+                        {bgImage ? (
+                            <div className="absolute inset-0 h-full">
+                                <img src={bgImage} alt="" loading="lazy" className={`w-full h-full object-cover ${isLocked ? 'grayscale opacity-40' : 'opacity-30'}`} />
+                                <div className="absolute inset-0 bg-gradient-to-r from-card via-card/90 to-card/70"></div>
+                            </div>
+                        ) : null}
 
-                        {/* BACKGROUND LAYER */}
-                        <div className={`absolute inset-0 z-0 transition-all duration-300 ${isExpanded ? 'h-32 opacity-40' : 'h-full opacity-100'}`}>
-                            {bgImage ? (
-                                <img
-                                    src={bgImage}
-                                    alt={module.title}
-                                    loading="lazy"
-                                    className={`w-full h-full object-cover ${isLocked ? 'grayscale opacity-60' : 'opacity-80'}`}
-                                />
-                            ) : (
-                                <div className="w-full h-full bg-body flex items-center justify-center">
-                                    <span className="text-5xl opacity-15 select-none">{categoryEmoji}</span>
-                                </div>
-                            )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent"></div>
-                        </div>
+                        <div className="relative z-10 p-4 flex items-center gap-4">
+                            {/* Module number / icon */}
+                            <div
+                                className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0 border"
+                                style={{
+                                    backgroundColor: `${cat.color}15`,
+                                    borderColor: `${cat.color}30`,
+                                    color: cat.color
+                                }}
+                            >
+                                {isLocked ? '\u{1F512}' : isCompleted ? '\u2713' : (idx + 1)}
+                            </div>
 
-                        {/* TOP BAR */}
-                        <div className="relative z-10 p-4 flex justify-between items-start">
-                             <div className="flex gap-2 items-center">
-                                 <span className="px-2 py-1 rounded-lg text-xs font-medium bg-[#6C5DD3]/10 text-[#6C5DD3]">
-                                     {module.category === 'SALES' ? '\u041F\u0440\u043E\u0434\u0430\u0436\u0438' : module.category === 'PSYCHOLOGY' ? '\u041F\u0441\u0438\u0445\u043E\u043B\u043E\u0433\u0438\u044F' : module.category === 'TACTICS' ? '\u0422\u0430\u043A\u0442\u0438\u043A\u0430' : '\u0411\u0430\u0437\u0430'}
-                                 </span>
-                                 {isCompleted && <span className="bg-[#34C759]/10 text-[#34C759] text-xs font-medium px-2 py-1 rounded-lg">{'\u2713'}</span>}
-                                 {totalCount > 0 && (
-                                    <span className="text-xs text-text-secondary">
-                                        {totalCount} {totalCount === 1 ? '\u0443\u0440\u043E\u043A' : totalCount < 5 ? '\u0443\u0440\u043E\u043A\u0430' : '\u0443\u0440\u043E\u043A\u043E\u0432'}
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span
+                                        className="text-[10px] font-bold uppercase tracking-wide"
+                                        style={{ color: cat.color }}
+                                    >
+                                        {cat.label}
                                     </span>
-                                 )}
-                             </div>
-                             {isLocked && (
-                                <div className="w-7 h-7 rounded-full bg-body/80 flex items-center justify-center">
-                                    <span className="text-sm">{'\u{1F512}'}</span>
+                                    {totalCount > 0 && (
+                                        <span className="text-[10px] text-text-secondary">{'\u2022'} {totalCount} {totalCount === 1 ? 'урок' : totalCount < 5 ? 'урока' : 'уроков'}</span>
+                                    )}
                                 </div>
-                             )}
-                        </div>
+                                <h3 className="text-sm font-bold text-text-primary leading-tight truncate">
+                                    {module.title}
+                                </h3>
+                                {!isExpanded && module.description && (
+                                    <p className="text-xs text-text-secondary line-clamp-1 mt-0.5">{module.description}</p>
+                                )}
+                            </div>
 
-                        {/* MAIN INFO */}
-                        <div className={`relative z-10 px-4 transition-all duration-300 ${isExpanded ? 'mt-2 mb-4' : 'mt-auto pb-4'}`}>
-                            <h3 className="text-base font-semibold text-text-primary leading-tight mb-2">
-                                {module.title}
-                            </h3>
-                            {!isExpanded && module.description && (
-                                <p className="text-xs text-text-secondary line-clamp-2 mb-3">
-                                    {module.description}
-                                </p>
-                            )}
-
-                            {/* Progress Bar */}
-                            <div className="flex items-center gap-3">
-                                <div className="flex-1 h-1.5 bg-body rounded-full overflow-hidden">
-                                     <div
-                                        className="h-full rounded-full transition-all duration-500 bg-[#6C5DD3]"
-                                        style={{ width: `${isLocked ? 0 : progressPercent}%` }}
-                                     ></div>
-                                </div>
-                                <span className={`text-xs font-medium whitespace-nowrap ${isLocked ? 'text-text-secondary' : 'text-[#6C5DD3]'}`}>
-                                    {isLocked ? `L${module.minLevel}` : totalCount > 0 ? `${completedCount}/${totalCount}` : '0%'}
-                                </span>
+                            {/* Progress + Chevron */}
+                            <div className="flex items-center gap-3 flex-shrink-0">
+                                {!isLocked && totalCount > 0 && (
+                                    <div className="relative w-9 h-9">
+                                        <svg className="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
+                                            <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-body" />
+                                            <circle cx="18" cy="18" r="15" fill="none" stroke={isCompleted ? '#34C759' : '#6C5DD3'} strokeWidth="2.5"
+                                                strokeDasharray={`${progressPercent * 0.942} 100`}
+                                                strokeLinecap="round" className="transition-all duration-700"
+                                            />
+                                        </svg>
+                                        <span className="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-text-primary">
+                                            {progressPercent}%
+                                        </span>
+                                    </div>
+                                )}
+                                <svg
+                                    className={`w-4 h-4 text-text-secondary transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+                                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
                             </div>
                         </div>
 
-                        {/* LESSONS LIST (Expanded) */}
-                        {isExpanded && (
-                            <div className="relative z-10 px-4 pb-4 space-y-2 flex-1 overflow-y-auto animate-fade-in custom-scrollbar">
-                                <p className="text-xs text-text-secondary mb-3 px-1">{module.description}</p>
-                                {module.lessons.map((lesson, lIdx) => {
-                                    const isLessonCompleted = userProgress.completedLessonIds.includes(lesson.id);
+                        {/* Thin progress bar at bottom of header */}
+                        {!isLocked && totalCount > 0 && !isExpanded && (
+                            <div className="h-0.5 bg-body">
+                                <div
+                                    className="h-full transition-all duration-700"
+                                    style={{
+                                        width: `${progressPercent}%`,
+                                        backgroundColor: isCompleted ? '#34C759' : '#6C5DD3'
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </div>
 
-                                    return (
-                                        <div
-                                            key={lesson.id}
-                                            onClick={(e) => handleLessonClick(e, lesson)}
-                                            className="flex items-center gap-3 p-3 rounded-xl bg-body border border-border-color transition-colors active:scale-[0.98]"
-                                        >
+                    {/* LESSONS ACCORDION */}
+                    <div
+                        className={`transition-all duration-300 ease-out overflow-hidden ${
+                            isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+                        }`}
+                    >
+                        {module.description && (
+                            <p className="text-xs text-text-secondary px-4 pb-3 leading-relaxed">{module.description}</p>
+                        )}
+
+                        <div className="px-3 pb-3 space-y-1.5">
+                            {module.lessons.map((lesson, lIdx) => {
+                                const isDone = userProgress.completedLessonIds.includes(lesson.id);
+                                const thumb = getYouTubeThumbnail(lesson.videoUrl);
+
+                                return (
+                                    <div
+                                        key={lesson.id}
+                                        onClick={(e) => handleLessonClick(e, lesson)}
+                                        className={`
+                                            flex items-center gap-3 p-3 rounded-xl
+                                            border transition-all duration-200
+                                            cursor-pointer active:scale-[0.98]
+                                            ${isDone
+                                                ? 'bg-[#34C759]/5 border-[#34C759]/20'
+                                                : 'bg-body border-border-color hover:border-[#6C5DD3]/30'
+                                            }
+                                        `}
+                                    >
+                                        {/* Lesson thumbnail or number */}
+                                        {thumb ? (
+                                            <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 border border-border-color">
+                                                <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                            </div>
+                                        ) : (
                                             <div className={`
-                                                w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-semibold
-                                                ${isLessonCompleted
-                                                    ? 'bg-[#34C759]/10 text-[#34C759]'
-                                                    : 'bg-surface text-text-secondary'
+                                                w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-xs font-bold
+                                                ${isDone
+                                                    ? 'bg-[#34C759] text-white'
+                                                    : 'bg-surface text-text-secondary border border-border-color'
                                                 }
                                             `}>
-                                                {isLessonCompleted ? '\u2713' : lIdx + 1}
+                                                {isDone ? '\u2713' : (lIdx + 1)}
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="text-sm font-medium text-text-primary leading-tight">{lesson.title}</h4>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-xs text-text-secondary">+{lesson.xpReward} XP</span>
-                                                </div>
-                                            </div>
-                                            <svg className="w-4 h-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                                        )}
 
-                        {/* Collapse indicator */}
-                        {isExpanded && (
-                            <div className="relative z-10 flex justify-center pb-2">
-                                <div className="w-10 h-1 bg-border-color rounded-full"></div>
-                            </div>
-                        )}
+                                        {/* Lesson info */}
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className={`text-sm font-medium leading-tight truncate ${isDone ? 'text-[#34C759]' : 'text-text-primary'}`}>
+                                                {lesson.title}
+                                            </h4>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[10px] text-text-secondary">+{lesson.xpReward} XP</span>
+                                                {lesson.videoUrl && <span className="text-[10px] text-text-secondary">{'\u2022'} Видео</span>}
+                                                {lesson.homeworkType && <span className="text-[10px] text-text-secondary">{'\u2022'} {lesson.homeworkType === 'TEXT' ? 'Текст' : lesson.homeworkType === 'PHOTO' ? 'Фото' : lesson.homeworkType === 'VIDEO' ? 'Видео' : 'Файл'}</span>}
+                                            </div>
+                                        </div>
+
+                                        {/* Arrow */}
+                                        <svg className="w-4 h-4 text-text-secondary/50 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Collapse handle */}
+                        <div className="flex justify-center pb-2">
+                            <div className="w-10 h-1 bg-border-color rounded-full"></div>
+                        </div>
                     </div>
                 </div>
             );

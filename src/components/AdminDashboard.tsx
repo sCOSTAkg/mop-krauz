@@ -474,44 +474,78 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         {/* --- VIEW: COURSE --- */}
         {activeSubTab === 'COURSE' && (
-             <div className="space-y-4 animate-slide-up">
+             <div className="space-y-3 animate-slide-up">
                  {modules.map((mod, i) => {
                      const isExpanded = expandedModuleId === mod.id;
                      const previewThumb = mod.imageUrl || getYouTubeThumbnail(mod.videoUrl);
+                     const completedCount = mod.lessons.filter(l => currentUser.completedLessonIds?.includes(l.id)).length;
+                     const progress = mod.lessons.length > 0 ? Math.round((completedCount / mod.lessons.length) * 100) : 0;
 
                      return (
                          <div key={mod.id} className="bg-surface border border-border-color rounded-2xl overflow-hidden transition-all duration-300">
-                             <div 
-                                className="p-5 flex items-center gap-4 group cursor-pointer relative overflow-hidden"
+                             {/* Module Header */}
+                             <div
+                                className="p-4 flex items-center gap-3 cursor-pointer active:bg-body/50 transition-colors"
                                 onClick={() => setExpandedModuleId(isExpanded ? null : mod.id)}
                              >
-                                 <div className="w-12 h-12 rounded-2xl bg-body flex items-center justify-center font-bold text-text-secondary text-sm border border-border-color relative z-10 overflow-hidden">
+                                 <div className="w-11 h-11 rounded-xl bg-body flex items-center justify-center font-bold text-text-secondary text-sm border border-border-color overflow-hidden flex-shrink-0">
                                      {previewThumb ? <img src={previewThumb} className="w-full h-full object-cover" /> : (i + 1)}
                                  </div>
-                                 <div className="flex-1 min-w-0 relative z-10">
-                                     <h4 className="font-bold text-text-primary truncate">{mod.title}</h4>
-                                     <p className="text-xs text-text-secondary">{mod.lessons.length} уроков</p>
+                                 <div className="flex-1 min-w-0">
+                                     <h4 className="font-bold text-text-primary text-sm truncate">{mod.title}</h4>
+                                     <div className="flex items-center gap-2 mt-0.5">
+                                         <span className="text-[10px] text-text-secondary">{mod.lessons.length} уроков</span>
+                                         <span className="text-[10px] text-text-secondary">•</span>
+                                         <span className="text-[10px] text-[#6C5DD3] font-medium">{mod.category}</span>
+                                         {progress > 0 && <span className="text-[10px] text-[#34C759] font-medium">{progress}%</span>}
+                                     </div>
                                  </div>
-                                 <button className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▼</button>
+                                 <svg className={`w-4 h-4 text-text-secondary transition-transform duration-300 flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                              </div>
-                             
-                             {isExpanded && (
-                                 <div className="bg-body/50 border-t border-border-color p-4 space-y-4">
-                                     <div className="grid gap-3 bg-body p-4 rounded-2xl border border-border-color">
-                                         <input value={mod.title} onChange={(e) => handleUpdateModuleDetails(mod.id, { title: e.target.value })} className="w-full bg-body border border-border-color p-3 rounded-xl text-xs font-bold outline-none" placeholder="Название" />
-                                         <textarea value={mod.description} onChange={(e) => handleUpdateModuleDetails(mod.id, { description: e.target.value })} className="w-full bg-body border border-border-color p-3 rounded-xl text-xs outline-none h-16 resize-none" placeholder="Описание" />
-                                         <input value={mod.imageUrl || ''} onChange={(e) => handleUpdateModuleDetails(mod.id, { imageUrl: e.target.value })} className="w-full bg-body border border-border-color p-3 rounded-xl text-xs font-mono outline-none" placeholder="Image URL" />
+
+                             {/* Expanded: Module Editor + Lessons */}
+                             <div className={`transition-all duration-300 overflow-hidden ${isExpanded ? 'max-h-[3000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                 <div className="border-t border-border-color p-4 space-y-4 bg-body/30">
+                                     {/* Module fields */}
+                                     <div className="grid gap-2">
+                                         <input value={mod.title} onChange={(e) => handleUpdateModuleDetails(mod.id, { title: e.target.value })} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm font-bold text-text-primary outline-none focus:border-[#6C5DD3]" placeholder="Название модуля" />
+                                         <textarea value={mod.description} onChange={(e) => handleUpdateModuleDetails(mod.id, { description: e.target.value })} className="w-full bg-body border border-border-color p-3 rounded-xl text-xs text-text-primary outline-none focus:border-[#6C5DD3] h-14 resize-none" placeholder="Описание" />
+                                         <div className="grid grid-cols-2 gap-2">
+                                             <input value={mod.imageUrl || ''} onChange={(e) => handleUpdateModuleDetails(mod.id, { imageUrl: e.target.value })} className="w-full bg-body border border-border-color p-3 rounded-xl text-xs font-mono text-text-secondary outline-none focus:border-[#6C5DD3]" placeholder="Image URL" />
+                                             <input value={mod.videoUrl || ''} onChange={(e) => handleUpdateModuleDetails(mod.id, { videoUrl: e.target.value })} className="w-full bg-body border border-border-color p-3 rounded-xl text-xs font-mono text-text-secondary outline-none focus:border-[#6C5DD3]" placeholder="Video URL" />
+                                         </div>
                                      </div>
-                                     <div className="space-y-2">
-                                         {mod.lessons.map((lesson, idx) => (
-                                             <div key={lesson.id} className="flex items-center justify-between p-3 bg-surface rounded-xl border border-border-color">
-                                                 <span className="text-xs font-bold text-text-primary truncate">{lesson.title}</span>
-                                                 <button onClick={() => setEditingLessonState({ moduleId: mod.id, lesson })} className="text-[10px] font-bold uppercase text-[#6C5DD3]">Edit</button>
-                                             </div>
-                                         ))}
+
+                                     {/* Lessons list */}
+                                     <div className="space-y-1.5">
+                                         <h5 className="text-[10px] font-bold uppercase tracking-wide text-text-secondary ml-1">Уроки ({mod.lessons.length})</h5>
+                                         {mod.lessons.map((lesson, idx) => {
+                                             const isLessonDone = currentUser.completedLessonIds?.includes(lesson.id);
+                                             return (
+                                                 <div key={lesson.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isLessonDone ? 'bg-[#34C759]/5 border-[#34C759]/20' : 'bg-surface border-border-color'}`}>
+                                                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isLessonDone ? 'bg-[#34C759] text-white' : 'bg-body text-text-secondary border border-border-color'}`}>
+                                                         {isLessonDone ? '✓' : (idx + 1)}
+                                                     </div>
+                                                     <div className="flex-1 min-w-0">
+                                                         <h4 className="text-xs font-semibold text-text-primary truncate">{lesson.title}</h4>
+                                                         <div className="flex items-center gap-2 mt-0.5">
+                                                             <span className="text-[9px] text-text-secondary">+{lesson.xpReward} XP</span>
+                                                             <span className="text-[9px] text-text-secondary">{lesson.homeworkType}</span>
+                                                             {lesson.videoUrl && <span className="text-[9px] text-text-secondary">🎥</span>}
+                                                         </div>
+                                                     </div>
+                                                     <button
+                                                         onClick={() => setEditingLessonState({ moduleId: mod.id, lesson })}
+                                                         className="px-3 py-1.5 rounded-lg bg-[#6C5DD3]/10 text-[#6C5DD3] text-[10px] font-bold uppercase active:scale-95 transition-transform"
+                                                     >
+                                                         Edit
+                                                     </button>
+                                                 </div>
+                                             );
+                                         })}
                                      </div>
                                  </div>
-                             )}
+                             </div>
                          </div>
                      );
                  })}
