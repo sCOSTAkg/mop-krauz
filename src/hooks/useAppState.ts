@@ -43,7 +43,7 @@ const DEFAULT_USER: UserProgress = {
   completedLessonIds: [],
   submittedHomeworks: [],
   chatHistory: [],
-  theme: 'LIGHT',
+  theme: 'SYSTEM',
   notifications: { pushEnabled: false, telegramSync: false, deadlineReminders: true, chatNotifications: true },
   notebook: [],
   habits: [],

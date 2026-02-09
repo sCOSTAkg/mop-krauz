@@ -90,9 +90,15 @@ export const Profile: React.FC<ProfileProps> = ({ userProgress, onLogout, allUse
     }, 800);
   };
 
-  const toggleTheme = () => {
-      const newTheme = userProgress.theme === 'DARK' ? 'LIGHT' : 'DARK';
-      onUpdateUser({ theme: newTheme });
+  const themeOptions: { value: import('../types').AppTheme; label: string; icon: string; desc: string }[] = [
+      { value: 'SYSTEM', label: 'Система', icon: '📱', desc: 'Как в устройстве' },
+      { value: 'AUTO', label: 'Авто', icon: '🌓', desc: 'По времени дня' },
+      { value: 'LIGHT', label: 'Светлая', icon: '☀️', desc: 'Всегда светлая' },
+      { value: 'DARK', label: 'Тёмная', icon: '🌙', desc: 'Всегда тёмная' },
+  ];
+
+  const setTheme = (t: import('../types').AppTheme) => {
+      onUpdateUser({ theme: t });
       telegram.haptic('selection');
   };
 
@@ -278,19 +284,23 @@ export const Profile: React.FC<ProfileProps> = ({ userProgress, onLogout, allUse
   const renderSettings = () => (
       <div className="space-y-4">
           <div className="bg-card p-4 rounded-2xl border border-border-color animate-fade-in">
-              <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-body flex items-center justify-center text-lg">
-                          {userProgress.theme === 'DARK' ? '🌙' : '☀️'}
-                      </div>
-                      <div>
-                          <h3 className="font-semibold text-text-primary text-sm">Тема</h3>
-                          <p className="text-text-secondary text-xs">{userProgress.theme === 'DARK' ? 'Тёмная' : 'Светлая'}</p>
-                      </div>
-                  </div>
-                  <button onClick={toggleTheme} className="relative w-12 h-7 bg-body rounded-full p-0.5 transition-colors border border-border-color">
-                      <div className={`w-6 h-6 bg-[#6C5DD3] rounded-full shadow-sm transform transition-transform duration-300 ${userProgress.theme === 'DARK' ? 'translate-x-5' : 'translate-x-0'}`}></div>
-                  </button>
+              <h3 className="font-semibold text-text-primary text-sm mb-3">Тема оформления</h3>
+              <div className="grid grid-cols-4 gap-2">
+                  {themeOptions.map(opt => (
+                      <button
+                          key={opt.value}
+                          onClick={() => setTheme(opt.value)}
+                          className={`flex flex-col items-center p-3 rounded-xl border transition-all active:scale-95 ${
+                              userProgress.theme === opt.value
+                                  ? 'border-[#6C5DD3] bg-[#6C5DD3]/10'
+                                  : 'border-border-color bg-body'
+                          }`}
+                      >
+                          <span className="text-xl mb-1">{opt.icon}</span>
+                          <span className="text-xs font-semibold text-text-primary">{opt.label}</span>
+                          <span className="text-[10px] text-text-secondary mt-0.5 leading-tight text-center">{opt.desc}</span>
+                      </button>
+                  ))}
               </div>
           </div>
 

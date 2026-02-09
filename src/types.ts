@@ -101,7 +101,7 @@ export interface NotificationSettings {
   chatNotifications: boolean;
 }
 
-export type AppTheme = 'LIGHT' | 'DARK';
+export type AppTheme = 'LIGHT' | 'DARK' | 'SYSTEM' | 'AUTO';
 
 export interface UserDossier {
   height?: string;

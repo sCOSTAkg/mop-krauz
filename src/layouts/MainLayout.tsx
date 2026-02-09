@@ -58,7 +58,7 @@ export const MainLayout: React.FC = () => {
     addToast: state.addToast,
   });
 
-  useTheme(state.userProgress.theme);
+  const effectiveTheme = useTheme(state.userProgress.theme);
   useAutoSave(state.userProgress);
 
   const activeTab = ROUTE_TO_TAB[location.pathname] || Tab.HOME;
@@ -72,7 +72,7 @@ export const MainLayout: React.FC = () => {
         ))}
       </div>
       <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative z-10">
-        <Outlet context={{ ...state, setActiveTab, handleLogin, syncData }} />
+        <Outlet context={{ ...state, setActiveTab, handleLogin, syncData, effectiveTheme }} />
       </main>
       <SmartNav
         activeTab={activeTab}
