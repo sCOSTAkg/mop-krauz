@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { NotebookEntry, SmartNavAction } from '../types';
 import { telegram } from '../services/telegramService';
-import { XPService, XP_RULES } from '../services/xpService';
+import { XPService } from '../services/xpService';
 
 interface NotebookViewProps {
   entries: NotebookEntry[];
