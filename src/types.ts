@@ -12,6 +12,7 @@ export interface Lesson {
   homeworkTask: string;
   aiGradingInstruction: string;
   videoUrl?: string;
+  durationMinutes?: number;
 }
 
 export type ModuleCategory = 'SALES' | 'PSYCHOLOGY' | 'TACTICS' | 'GENERAL';
