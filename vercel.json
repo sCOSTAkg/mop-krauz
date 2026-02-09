@@ -1,6 +1,8 @@
-
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/((?!assets|icon-|manifest|service-worker|metadata).*)",
+      "destination": "/index.html"
+    }
   ]
 }
