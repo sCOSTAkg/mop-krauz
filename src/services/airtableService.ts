@@ -1,5 +1,5 @@
 
-import { UserProgress, Module, Lesson, Material, Stream, CalendarEvent, ArenaScenario, AppNotification, AppConfig, EventType } from '../types';
+import { UserProgress, Module, Lesson, Material, Stream, CalendarEvent, ArenaScenario, AppNotification, AppConfig } from '../types';
 import { Logger } from './logger';
 
 // ─── Configuration ──────────────────────────────────────────────
