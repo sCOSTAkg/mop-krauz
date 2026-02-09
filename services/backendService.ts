@@ -191,12 +191,10 @@ export const Backend = {
   // Health check для диагностики
   async healthCheck(): Promise<{
     airtable: boolean;
-    supabase: boolean;
     timestamp: string;
   }> {
     const health = {
       airtable: false,
-      supabase: false,
       timestamp: new Date().toISOString()
     };
 
