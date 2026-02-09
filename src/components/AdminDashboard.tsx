@@ -5,6 +5,8 @@ import { Button } from './Button';
 import { telegram } from '../services/telegramService';
 import { Logger } from '../services/logger';
 import { Avatar } from '../utils/avatar';
+import { airtableService } from '../services/airtableService';
+import { Backend } from '../services/backendService';
 
 // ─── TYPES ──────────────────────────────────────────────────────
 interface AdminDashboardProps {
@@ -163,7 +165,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [selectedProvider, setSelectedProvider] = useState<AIProviderId>(config.aiConfig?.activeProvider || 'GOOGLE_GEMINI');
   const [apiKeys, setApiKeys] = useState(config.aiConfig?.apiKeys || {});
   const [welcomeConfig, setWelcomeConfig] = useState({ videoUrl: config.welcomeVideoUrl || '', message: config.welcomeMessage || '' });
-  const [airtableConfig, setAirtableConfig] = useState({ pat: config.integrations.airtablePat || '', baseId: config.integrations.airtableBaseId || '', tableName: config.integrations.airtableTableName || 'Users' });
+  const [airtableConfig, setAirtableConfig] = useState({
+    pat: config.integrations.airtablePat || '',
+    baseId: config.integrations.airtableBaseId || '',
+    tableName: config.integrations.airtableTableName || 'Users',
+    modulesTable: 'Modules',
+    lessonsTable: 'Lessons',
+    materialsTable: 'Materials',
+    streamsTable: 'Streams',
+    scenariosTable: 'Scenarios',
+    eventsTable: 'Events',
+    notificationsTable: 'Notifications',
+    configTable: 'Config',
+  });
+
+  // Sync state
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'checking' | 'syncing' | 'success' | 'error'>('idle');
+  const [syncHealth, setSyncHealth] = useState<{ airtable: boolean; configured: boolean; timestamp: string } | null>(null);
+  const [syncLog, setSyncLog] = useState<string[]>([]);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
   // Course editing
   const [expandedModuleId, setExpandedModuleId] = useState<string | null>(null);
@@ -212,7 +232,87 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
   const handleSaveAirtableConfig = () => {
     onUpdateConfig({ ...config, integrations: { ...config.integrations, airtablePat: airtableConfig.pat, airtableBaseId: airtableConfig.baseId, airtableTableName: airtableConfig.tableName } });
+    // Update the live service instance
+    airtableService.updateConfig(airtableConfig.pat, airtableConfig.baseId);
     telegram.haptic('success'); addToast('success', 'Airtable обновлен');
+  };
+
+  // --- Sync handlers ---
+  const addSyncLog = (msg: string) => setSyncLog(prev => [...prev.slice(-19), `[${new Date().toLocaleTimeString()}] ${msg}`]);
+
+  const handleHealthCheck = async () => {
+    setSyncStatus('checking');
+    addSyncLog('Проверка подключения...');
+    try {
+      const health = await Backend.healthCheck();
+      setSyncHealth(health);
+      setSyncStatus(health.airtable ? 'success' : 'error');
+      addSyncLog(health.airtable ? '✅ Airtable доступен' : '❌ Airtable недоступен');
+      if (!health.configured) addSyncLog('⚠️ PAT или Base ID не заданы');
+    } catch (e) {
+      setSyncStatus('error');
+      addSyncLog(`❌ Ошибка: ${e}`);
+    }
+  };
+
+  const handleFullSync = async () => {
+    setSyncStatus('syncing');
+    addSyncLog('🔄 Запуск полной синхронизации...');
+    try {
+      // Push all local data to Airtable
+      addSyncLog(`📦 Модули: ${modules.length}...`);
+      await Backend.saveCollection('modules', modules);
+      addSyncLog(`📎 Материалы: ${materials.length}...`);
+      await Backend.saveCollection('materials', materials);
+      addSyncLog(`📡 Эфиры: ${streams.length}...`);
+      await Backend.saveCollection('streams', streams);
+      addSyncLog(`📅 События: ${events.length}...`);
+      await Backend.saveCollection('events', events);
+      addSyncLog(`⚔️ Сценарии: ${scenarios.length}...`);
+      await Backend.saveCollection('scenarios', scenarios);
+      addSyncLog(`⚙️ Конфигурация...`);
+      await Backend.saveGlobalConfig(config);
+      
+      setLastSyncTime(new Date().toLocaleString());
+      setSyncStatus('success');
+      addSyncLog('✅ Полная синхронизация завершена');
+      telegram.haptic('success');
+      addToast('success', 'Все данные синхронизированы с Airtable');
+    } catch (e) {
+      setSyncStatus('error');
+      addSyncLog(`❌ Ошибка синхронизации: ${e}`);
+      addToast('error', 'Ошибка синхронизации');
+    }
+  };
+
+  const handlePullFromAirtable = async () => {
+    setSyncStatus('syncing');
+    addSyncLog('⬇️ Загрузка данных из Airtable...');
+    try {
+      const content = await Backend.fetchAllContent();
+      if (content) {
+        if (content.modules.length > 0) { onUpdateModules(content.modules); addSyncLog(`📦 Модули: ${content.modules.length}`); }
+        if (content.materials.length > 0) { onUpdateMaterials(content.materials); addSyncLog(`📎 Материалы: ${content.materials.length}`); }
+        if (content.streams.length > 0) { onUpdateStreams(content.streams); addSyncLog(`📡 Эфиры: ${content.streams.length}`); }
+        if (content.events.length > 0) { onUpdateEvents(content.events); addSyncLog(`📅 События: ${content.events.length}`); }
+        if (content.scenarios.length > 0) { onUpdateScenarios(content.scenarios); addSyncLog(`⚔️ Сценарии: ${content.scenarios.length}`); }
+      }
+      setLastSyncTime(new Date().toLocaleString());
+      setSyncStatus('success');
+      addSyncLog('✅ Данные загружены из Airtable');
+      telegram.haptic('success');
+      addToast('success', 'Данные обновлены из Airtable');
+    } catch (e) {
+      setSyncStatus('error');
+      addSyncLog(`❌ Ошибка загрузки: ${e}`);
+      addToast('error', 'Ошибка загрузки');
+    }
+  };
+
+  const handleClearSyncCache = () => {
+    airtableService.clearCache();
+    addSyncLog('🧹 Кэш Airtable очищен');
+    addToast('info', 'Кэш очищен');
   };
   const toggleFeature = (key: keyof AppConfig['features']) => {
     onUpdateConfig({ ...config, features: { ...config.features, [key]: !config.features[key] } });
@@ -658,13 +758,204 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <Button onClick={handleSaveAIConfig} fullWidth className="!rounded-xl">Сохранить AI Config</Button>
           </div>
 
-          {/* Airtable CRM */}
+          {/* ═══ SYNC & AIRTABLE DASHBOARD ═══ */}
+          <div className={`${cl.card} p-6 space-y-5`}>
+            <div className="flex items-center justify-between">
+              <h3 className={`${cl.sectionTitle} flex items-center gap-2`}><span>🔄</span> Синхронизация & Airtable</h3>
+              {syncHealth && (
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase ${syncHealth.airtable ? 'bg-[#34C759]/10 text-[#34C759]' : 'bg-red-500/10 text-red-500'}`}>
+                  <div className={`w-2 h-2 rounded-full ${syncHealth.airtable ? 'bg-[#34C759] animate-pulse' : 'bg-red-500'}`} />
+                  {syncHealth.airtable ? 'Online' : 'Offline'}
+                </div>
+              )}
+            </div>
+
+            {/* Connection Status Card */}
+            <div className="bg-body rounded-xl p-4 border border-border-color space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-text-primary">Статус подключения</span>
+                <button
+                  onClick={handleHealthCheck}
+                  disabled={syncStatus === 'checking'}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all active:scale-95 ${syncStatus === 'checking' ? 'bg-body text-text-secondary' : 'bg-[#6C5DD3]/10 text-[#6C5DD3] hover:bg-[#6C5DD3]/20'}`}
+                >
+                  {syncStatus === 'checking' ? '⏳ Проверка...' : '🏥 Health Check'}
+                </button>
+              </div>
+              
+              {syncHealth && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className={`p-3 rounded-lg border ${syncHealth.configured ? 'border-[#34C759]/30 bg-[#34C759]/5' : 'border-red-500/30 bg-red-500/5'}`}>
+                    <p className="text-[9px] font-bold text-text-secondary uppercase">Конфигурация</p>
+                    <p className={`text-sm font-bold ${syncHealth.configured ? 'text-[#34C759]' : 'text-red-500'}`}>{syncHealth.configured ? '✓ OK' : '✕ Нет'}</p>
+                  </div>
+                  <div className={`p-3 rounded-lg border ${syncHealth.airtable ? 'border-[#34C759]/30 bg-[#34C759]/5' : 'border-red-500/30 bg-red-500/5'}`}>
+                    <p className="text-[9px] font-bold text-text-secondary uppercase">Airtable API</p>
+                    <p className={`text-sm font-bold ${syncHealth.airtable ? 'text-[#34C759]' : 'text-red-500'}`}>{syncHealth.airtable ? '✓ Доступен' : '✕ Ошибка'}</p>
+                  </div>
+                </div>
+              )}
+
+              {lastSyncTime && (
+                <p className="text-[10px] text-text-secondary">Последняя синхронизация: <span className="font-bold text-text-primary">{lastSyncTime}</span></p>
+              )}
+            </div>
+
+            {/* Sync Actions */}
+            <div className="space-y-2">
+              <p className={cl.label}>Операции синхронизации</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handlePullFromAirtable}
+                  disabled={syncStatus === 'syncing'}
+                  className={`p-4 rounded-xl border border-border-color text-center transition-all active:scale-95 hover:border-[#6C5DD3] ${syncStatus === 'syncing' ? 'opacity-50' : ''}`}
+                >
+                  <span className="text-2xl block mb-1">⬇️</span>
+                  <span className="text-[10px] font-bold uppercase text-text-primary block">Pull</span>
+                  <span className="text-[8px] text-text-secondary">Airtable → Local</span>
+                </button>
+                <button
+                  onClick={handleFullSync}
+                  disabled={syncStatus === 'syncing'}
+                  className={`p-4 rounded-xl border border-border-color text-center transition-all active:scale-95 hover:border-[#6C5DD3] ${syncStatus === 'syncing' ? 'opacity-50' : ''}`}
+                >
+                  <span className="text-2xl block mb-1">⬆️</span>
+                  <span className="text-[10px] font-bold uppercase text-text-primary block">Push</span>
+                  <span className="text-[8px] text-text-secondary">Local → Airtable</span>
+                </button>
+              </div>
+              <button
+                onClick={handleClearSyncCache}
+                className="w-full p-3 rounded-xl border border-border-color text-xs font-medium text-text-secondary hover:border-red-500/50 hover:text-red-500 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <span>🧹</span> Очистить кэш Airtable
+              </button>
+            </div>
+
+            {/* Data Summary */}
+            <div className="bg-body rounded-xl p-4 border border-border-color">
+              <p className={cl.label}>Локальные данные</p>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {[
+                  ['📦', 'Модули', modules.length],
+                  ['📚', 'Уроки', modules.reduce((a, m) => a + m.lessons.length, 0)],
+                  ['📎', 'Материалы', materials.length],
+                  ['📡', 'Эфиры', streams.length],
+                  ['⚔️', 'Сценарии', scenarios.length],
+                  ['📅', 'События', events.length],
+                ].map(([icon, label, count]) => (
+                  <div key={label as string} className="text-center p-2 rounded-lg border border-border-color">
+                    <span className="text-lg">{icon}</span>
+                    <p className="text-xs font-bold text-text-primary">{count}</p>
+                    <p className="text-[8px] text-text-secondary uppercase">{label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Sync Log */}
+            {syncLog.length > 0 && (
+              <div className="bg-body rounded-xl p-4 border border-border-color">
+                <div className="flex items-center justify-between mb-2">
+                  <p className={cl.label}>Лог синхронизации</p>
+                  <button onClick={() => setSyncLog([])} className="text-[9px] text-text-secondary hover:text-red-500">Очистить</button>
+                </div>
+                <div className="max-h-40 overflow-y-auto space-y-1 no-scrollbar">
+                  {syncLog.map((line, i) => (
+                    <p key={i} className="text-[10px] font-mono text-text-secondary leading-relaxed">{line}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Airtable Credentials */}
           <div className={`${cl.card} p-6 space-y-4`}>
-            <h3 className={`${cl.sectionTitle} flex items-center gap-2`}><span>📊</span> CRM Integration (Airtable)</h3>
-            <input type="password" value={airtableConfig.pat} onChange={e => setAirtableConfig({ ...airtableConfig, pat: e.target.value })} placeholder="Personal Access Token (PAT)" className={cl.inputMono} />
-            <input value={airtableConfig.baseId} onChange={e => setAirtableConfig({ ...airtableConfig, baseId: e.target.value })} placeholder="Base ID (app...)" className={cl.inputMono} />
-            <input value={airtableConfig.tableName} onChange={e => setAirtableConfig({ ...airtableConfig, tableName: e.target.value })} placeholder="Table Name (e.g. Users)" className={cl.input} />
-            <Button onClick={handleSaveAirtableConfig} fullWidth className="!rounded-xl">Сохранить CRM</Button>
+            <h3 className={`${cl.sectionTitle} flex items-center gap-2`}><span>🔑</span> Airtable Credentials</h3>
+            <div>
+              <label className={cl.label}>Personal Access Token (PAT)</label>
+              <input type="password" value={airtableConfig.pat} onChange={e => setAirtableConfig({ ...airtableConfig, pat: e.target.value })} placeholder="pat..." className={cl.inputMono} />
+            </div>
+            <div>
+              <label className={cl.label}>Base ID</label>
+              <input value={airtableConfig.baseId} onChange={e => setAirtableConfig({ ...airtableConfig, baseId: e.target.value })} placeholder="app..." className={cl.inputMono} />
+            </div>
+            <div>
+              <label className={cl.label}>Users Table</label>
+              <input value={airtableConfig.tableName} onChange={e => setAirtableConfig({ ...airtableConfig, tableName: e.target.value })} placeholder="Users" className={cl.input} />
+            </div>
+            <Button onClick={handleSaveAirtableConfig} fullWidth className="!rounded-xl">Сохранить & Подключить</Button>
+          </div>
+
+          {/* Table Names Config */}
+          <div className={`${cl.card} p-6 space-y-4`}>
+            <h3 className={`${cl.sectionTitle} flex items-center gap-2`}><span>📋</span> Названия таблиц Airtable</h3>
+            <p className="text-[10px] text-text-secondary -mt-2">Имена таблиц в базе Airtable. Измените если ваши таблицы названы иначе.</p>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                ['modulesTable', 'Modules', '📦'],
+                ['lessonsTable', 'Lessons', '📚'],
+                ['materialsTable', 'Materials', '📎'],
+                ['streamsTable', 'Streams', '📡'],
+                ['scenariosTable', 'Scenarios', '⚔️'],
+                ['eventsTable', 'Events', '📅'],
+                ['notificationsTable', 'Notifications', '🔔'],
+                ['configTable', 'Config', '⚙️'],
+              ] as const).map(([key, placeholder, icon]) => (
+                <div key={key}>
+                  <label className={cl.label}>{icon} {placeholder}</label>
+                  <input
+                    value={(airtableConfig as any)[key] || ''}
+                    onChange={e => setAirtableConfig({ ...airtableConfig, [key]: e.target.value })}
+                    placeholder={placeholder}
+                    className={`${cl.input} !text-xs`}
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-[9px] text-text-secondary italic mt-1">⚠️ Изменения вступят в силу после перезапуска приложения (требуются env-переменные VITE_AIRTABLE_*_TABLE)</p>
+          </div>
+
+          {/* Sync Architecture Info */}
+          <div className={`${cl.card} p-6 space-y-3`}>
+            <h3 className={`${cl.sectionTitle} flex items-center gap-2`}><span>ℹ️</span> Как работает синхронизация</h3>
+            <div className="space-y-2 text-xs text-text-secondary">
+              <div className="flex gap-3 items-start">
+                <span className="text-lg mt-0.5">💾</span>
+                <div>
+                  <p className="font-bold text-text-primary">Offline-First</p>
+                  <p>Все данные сначала сохраняются в localStorage. Airtable синхронизируется фоново.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-lg mt-0.5">🔄</span>
+                <div>
+                  <p className="font-bold text-text-primary">Авто-синхронизация</p>
+                  <p>Каждые 2 минуты + мгновенно при возврате на вкладку. После изменений — ускоренный цикл 30 сек.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-lg mt-0.5">⚡</span>
+                <div>
+                  <p className="font-bold text-text-primary">Rate Limiting</p>
+                  <p>4 запроса/сек, 3 параллельных. Автоматический retry при 429 ошибках.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-lg mt-0.5">🗑️</span>
+                <div>
+                  <p className="font-bold text-text-primary">Diff Sync</p>
+                  <p>При Push удалённые локально записи удаляются и в Airtable. Без дубликатов и призраков.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <span className="text-lg mt-0.5">📄</span>
+                <div>
+                  <p className="font-bold text-text-primary">Пагинация</p>
+                  <p>Автоматическая загрузка всех записей даже при 100+ в таблице.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
