@@ -52,7 +52,7 @@ export const ModuleList: React.FC<ModuleListProps> = React.memo(({ modules, user
   if (modules.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-[#6C5DD3]/10 flex items-center justify-center text-3xl mb-4">{'\u{1F4DA}'}</div>
+        <div className="w-16 h-16 rounded-2xl bg-[var(--color-accent)]/10 flex items-center justify-center text-3xl mb-4">{'\u{1F4DA}'}</div>
         <h3 className="text-lg font-semibold text-text-primary mb-2">Программа формируется</h3>
         <p className="text-sm text-text-secondary max-w-xs">Модули появятся после добавления администратором.</p>
       </div>
