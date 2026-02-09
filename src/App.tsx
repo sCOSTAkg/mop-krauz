@@ -11,6 +11,7 @@ import {
   ModulesPage,
   ProfilePage,
   AdminPage,
+  RatingPage,
 } from './pages';
 
 const Loading = () => (
@@ -37,6 +38,7 @@ const App: React.FC = () => (
           <Route path="/streams" element={<StreamsPage />} />
           <Route path="/modules" element={<ModulesPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/rating" element={<RatingPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
