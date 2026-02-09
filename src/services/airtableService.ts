@@ -1,12 +1,11 @@
 
-import { UserProgress, Module, Lesson, Material, Stream, CalendarEvent, ArenaScenario, AppNotification } from '../types';
+import { UserProgress, Module, Lesson, Material, Stream, CalendarEvent, ArenaScenario, AppNotification, AppConfig, EventType } from '../types';
 import { Logger } from './logger';
 
-// Configuration
+// ─── Configuration ──────────────────────────────────────────────
 const DEFAULT_PAT = import.meta.env.VITE_AIRTABLE_PAT || '';
 const DEFAULT_BASE_ID = import.meta.env.VITE_AIRTABLE_BASE_ID || '';
 
-// Table names
 const TABLES = {
   MODULES: import.meta.env.VITE_AIRTABLE_MODULES_TABLE || 'Modules',
   LESSONS: import.meta.env.VITE_AIRTABLE_LESSONS_TABLE || 'Lessons',
@@ -16,140 +15,327 @@ const TABLES = {
   NOTIFICATIONS: import.meta.env.VITE_AIRTABLE_NOTIFICATIONS_TABLE || 'Notifications',
   SCENARIOS: import.meta.env.VITE_AIRTABLE_SCENARIOS_TABLE || 'Scenarios',
   EVENTS: import.meta.env.VITE_AIRTABLE_EVENTS_TABLE || 'Events',
-  CONFIG: import.meta.env.VITE_AIRTABLE_CONFIG_TABLE || 'Config'
+  CONFIG: import.meta.env.VITE_AIRTABLE_CONFIG_TABLE || 'Config',
 };
 
+// ─── Rate limiter (Airtable: 5 req/sec per base) ───────────────
+class RateLimiter {
+  private queue: Array<{ fn: () => Promise<any>; resolve: (v: any) => void; reject: (e: any) => void }> = [];
+  private running = 0;
+  private readonly maxConcurrent: number;
+  private readonly intervalMs: number;
+  private lastTick = 0;
+
+  constructor(maxPerSecond = 4, maxConcurrent = 3) {
+    this.maxConcurrent = maxConcurrent;
+    this.intervalMs = Math.ceil(1000 / maxPerSecond);
+  }
+
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.queue.push({ fn, resolve, reject });
+      this.drain();
+    });
+  }
+
+  private async drain() {
+    if (this.running >= this.maxConcurrent || this.queue.length === 0) return;
+
+    const now = Date.now();
+    const wait = Math.max(0, this.intervalMs - (now - this.lastTick));
+    if (wait > 0) {
+      setTimeout(() => this.drain(), wait);
+      return;
+    }
+
+    const item = this.queue.shift();
+    if (!item) return;
+
+    this.running++;
+    this.lastTick = Date.now();
+
+    try {
+      const result = await item.fn();
+      item.resolve(result);
+    } catch (e) {
+      item.reject(e);
+    } finally {
+      this.running--;
+      this.drain();
+    }
+  }
+}
+
+// ─── Types ──────────────────────────────────────────────────────
+interface AirtableRecord<T = Record<string, any>> {
+  id: string;
+  fields: T;
+  createdTime?: string;
+}
+
+interface AirtableListResponse<T = Record<string, any>> {
+  records: AirtableRecord<T>[];
+  offset?: string;
+}
+
+interface SyncMeta {
+  lastSyncTimestamp: number;
+  contentHash: string;
+}
+
+// ─── Main Service ───────────────────────────────────────────────
 class AirtableService {
   private baseUrl = 'https://api.airtable.com/v0';
   private baseId: string;
   private pat: string;
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
-  private readonly CACHE_TTL = 2 * 60 * 1000; // 2 minutes cache (matches sync interval)
+  private readonly CACHE_TTL = 2 * 60 * 1000;
+  private limiter = new RateLimiter(4, 3);
+  
+  // Track Airtable record IDs for delete/update operations
+  private recordIdMap: Map<string, Map<string, string>> = new Map(); // table -> appId -> airtableRecordId
 
   constructor() {
     this.baseId = DEFAULT_BASE_ID;
     this.pat = DEFAULT_PAT;
   }
 
-  // Update config dynamically if needed
+  // ─── Configuration ──────────────────────────────────────────
   updateConfig(pat: string, baseId: string) {
     this.pat = pat;
     this.baseId = baseId;
     this.clearCache();
+    this.recordIdMap.clear();
   }
 
-  // Clear cache manually
+  isConfigured(): boolean {
+    return !!(this.pat && this.baseId);
+  }
+
   clearCache() {
     this.cache.clear();
     Logger.log('🧹 Airtable cache cleared');
   }
 
+  // ─── Core Request (with rate limiting & retry) ──────────────
   private async request<T>(endpoint: string, options: RequestInit = {}, useCache = false): Promise<T> {
     if (!this.pat || !this.baseId) {
       throw new Error('Airtable configuration missing (PAT or Base ID)');
     }
 
-    // Check cache
-    if (useCache && this.cache.has(endpoint)) {
-      const cached = this.cache.get(endpoint)!;
-      if (Date.now() - cached.timestamp < this.CACHE_TTL) {
-        Logger.log(`📦 Using cached data for ${endpoint}`);
+    // Cache check
+    const cacheKey = `${endpoint}:${options.method || 'GET'}`;
+    if (useCache && options.method === undefined) {
+      const cached = this.cache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
         return cached.data;
       }
     }
 
-    const url = `${this.baseUrl}/${this.baseId}/${endpoint}`;
-    const headers = {
-      'Authorization': `Bearer ${this.pat}`,
-      'Content-Type': 'application/json',
-      ...options.headers,
-    };
+    return this.limiter.execute(async () => {
+      const url = `${this.baseUrl}/${this.baseId}/${endpoint}`;
+      const headers = {
+        'Authorization': `Bearer ${this.pat}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      };
+
+      let lastError: Error | null = null;
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const response = await fetch(url, { ...options, headers });
+
+          // Rate limited — backoff & retry
+          if (response.status === 429) {
+            const retryAfter = parseInt(response.headers.get('Retry-After') || '30', 10);
+            Logger.log(`⚠️ Airtable 429 — waiting ${retryAfter}s (attempt ${attempt + 1})`);
+            await this.sleep(retryAfter * 1000);
+            continue;
+          }
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Airtable ${response.status}: ${errorText}`);
+          }
+
+          const data = await response.json();
+          if (useCache && !options.method) {
+            this.cache.set(cacheKey, { data, timestamp: Date.now() });
+          }
+          return data;
+        } catch (error) {
+          lastError = error as Error;
+          if (attempt < 2) {
+            await this.sleep(500 * (attempt + 1));
+          }
+        }
+      }
+
+      throw lastError || new Error('Airtable request failed');
+    });
+  }
+
+  private sleep(ms: number) {
+    return new Promise(r => setTimeout(r, ms));
+  }
+
+  // ─── Paginated Fetch (handles >100 records) ─────────────────
+  private async fetchAll<T>(table: string, params = '', useCache = false): Promise<AirtableRecord<T>[]> {
+    const allRecords: AirtableRecord<T>[] = [];
+    let offset: string | undefined;
+
+    do {
+      const sep = params ? '&' : '';
+      const offsetParam = offset ? `${sep}offset=${offset}` : '';
+      const endpoint = `${table}?${params}${offsetParam}`;
+
+      const data = await this.request<AirtableListResponse<T>>(endpoint, {}, useCache && !offset);
+      allRecords.push(...data.records);
+      offset = data.offset;
+    } while (offset);
+
+    return allRecords;
+  }
+
+  // ─── Record ID Resolution ──────────────────────────────────
+  private setRecordId(table: string, appId: string, recordId: string) {
+    if (!this.recordIdMap.has(table)) this.recordIdMap.set(table, new Map());
+    this.recordIdMap.get(table)!.set(appId, recordId);
+  }
+
+  private getRecordId(table: string, appId: string): string | undefined {
+    return this.recordIdMap.get(table)?.get(appId);
+  }
+
+  private async resolveRecordId(table: string, appId: string, idField = 'id'): Promise<string | null> {
+    const cached = this.getRecordId(table, appId);
+    if (cached) return cached;
 
     try {
-      const response = await fetch(url, { ...options, headers });
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`🚨 Airtable API Error [${response.status}]:`, errorText);
-        throw new Error(`Airtable API error: ${response.status} - ${errorText}`);
+      const data = await this.request<AirtableListResponse>(
+        `${table}?filterByFormula={${idField}}="${appId}"&maxRecords=1`
+      );
+      if (data.records.length > 0) {
+        this.setRecordId(table, appId, data.records[0].id);
+        return data.records[0].id;
       }
-      const data = await response.json();
+    } catch { /* ignore */ }
+    return null;
+  }
 
-      // Cache the response
-      if (useCache) {
-        this.cache.set(endpoint, { data, timestamp: Date.now() });
+  // ─── Batch Operations (max 10 per Airtable call) ───────────
+  private async batchCreate(table: string, records: Array<{ fields: Record<string, any> }>): Promise<AirtableRecord[]> {
+    const results: AirtableRecord[] = [];
+    const batches = this.chunk(records, 10);
+
+    for (const batch of batches) {
+      try {
+        const data = await this.request<{ records: AirtableRecord[] }>(table, {
+          method: 'POST',
+          body: JSON.stringify({ records: batch }),
+        });
+        results.push(...data.records);
+      } catch (e) {
+        Logger.error(`Batch create failed for ${table}`, e);
       }
+    }
+    return results;
+  }
 
-      return data;
-    } catch (error) {
-      Logger.error(`Airtable request failed: ${endpoint}`, error);
-      throw error;
+  private async batchUpdate(table: string, records: Array<{ id: string; fields: Record<string, any> }>): Promise<AirtableRecord[]> {
+    const results: AirtableRecord[] = [];
+    const batches = this.chunk(records, 10);
+
+    for (const batch of batches) {
+      try {
+        const data = await this.request<{ records: AirtableRecord[] }>(table, {
+          method: 'PATCH',
+          body: JSON.stringify({ records: batch }),
+        });
+        results.push(...data.records);
+      } catch (e) {
+        Logger.error(`Batch update failed for ${table}`, e);
+      }
+    }
+    return results;
+  }
+
+  private async batchDelete(table: string, recordIds: string[]): Promise<void> {
+    const batches = this.chunk(recordIds, 10);
+
+    for (const batch of batches) {
+      try {
+        const params = batch.map(id => `records[]=${id}`).join('&');
+        await this.request(`${table}?${params}`, { method: 'DELETE' });
+      } catch (e) {
+        Logger.error(`Batch delete failed for ${table}`, e);
+      }
     }
   }
 
-  // Fetch all modules with lessons - OPTIMIZED
+  private chunk<T>(arr: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) {
+      chunks.push(arr.slice(i, i + size));
+    }
+    return chunks;
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  //                      FETCH OPERATIONS
+  // ═════════════════════════════════════════════════════════════
+
+  // ─── Modules + Lessons ──────────────────────────────────────
   async fetchModules(): Promise<Module[]> {
     try {
       Logger.log('🔄 Fetching modules with lessons from Airtable...');
-      const startTime = Date.now();
+      const t0 = Date.now();
 
-      // Fetch modules and lessons in parallel
-      const [modulesResponse, lessonsResponse] = await Promise.all([
-        this.request<{ records: any[] }>(
-          `${TABLES.MODULES}?sort%5B0%5D%5Bfield%5D=sortOrder&sort%5B0%5D%5Bdirection%5D=asc`,
-          {},
-          true
-        ),
-        this.request<{ records: any[] }>(
-          `${TABLES.LESSONS}?sort%5B0%5D%5Bfield%5D=order&sort%5B0%5D%5Bdirection%5D=asc`,
-          {},
-          true
-        )
+      const [moduleRecords, lessonRecords] = await Promise.all([
+        this.fetchAll(TABLES.MODULES, 'sort%5B0%5D%5Bfield%5D=sortOrder&sort%5B0%5D%5Bdirection%5D=asc', true),
+        this.fetchAll(TABLES.LESSONS, 'sort%5B0%5D%5Bfield%5D=order&sort%5B0%5D%5Bdirection%5D=asc', true),
       ]);
 
-      Logger.log(`✅ Loaded ${modulesResponse.records.length} modules, ${lessonsResponse.records.length} lessons in ${Date.now() - startTime}ms`);
+      // Build record ID maps
+      moduleRecords.forEach(r => this.setRecordId(TABLES.MODULES, String(r.fields.id || r.id), r.id));
+      lessonRecords.forEach(r => this.setRecordId(TABLES.LESSONS, String(r.fields.appId || r.id), r.id));
 
-      // Create lessons map by Airtable Record ID of the Module
+      // Map lessons to their module's Airtable record ID
       const lessonsMap = new Map<string, Lesson[]>();
-
-      lessonsResponse.records.forEach(lessonRecord => {
-        const fields = lessonRecord.fields;
-
+      lessonRecords.forEach(r => {
+        const f = r.fields as any;
         const lesson: Lesson = {
-          id: String(fields.appId || lessonRecord.id),
-          title: fields.title || 'Урок без названия',
-          description: fields.description || '',
-          content: fields.content || '',
-          xpReward: Number(fields.xpReward) || 100,
-          homeworkType: (fields.homeworkType || 'TEXT') as any,
-          homeworkTask: fields.homeworkTask || '',
-          aiGradingInstruction: fields.aiGradingInstruction || '',
-          videoUrl: fields.videoUrl || ''
+          id: String(f.appId || r.id),
+          title: f.title || 'Урок без названия',
+          description: f.description || '',
+          content: f.content || '',
+          xpReward: Number(f.xpReward) || 100,
+          homeworkType: (f.homeworkType || 'TEXT') as any,
+          homeworkTask: f.homeworkTask || '',
+          aiGradingInstruction: f.aiGradingInstruction || '',
+          videoUrl: f.videoUrl || '',
         };
 
-        // Get module record IDs from the link field
-        const moduleLinks = fields.Module || [];
-        const links = Array.isArray(moduleLinks) ? moduleLinks : [moduleLinks];
-
-        links.forEach((moduleRecordId: string) => {
-          if (!lessonsMap.has(moduleRecordId)) {
-            lessonsMap.set(moduleRecordId, []);
-          }
-          lessonsMap.get(moduleRecordId)!.push(lesson);
+        const moduleLinks = Array.isArray(f.Module) ? f.Module : (f.Module ? [f.Module] : []);
+        moduleLinks.forEach((modRecId: string) => {
+          if (!lessonsMap.has(modRecId)) lessonsMap.set(modRecId, []);
+          lessonsMap.get(modRecId)!.push(lesson);
         });
       });
 
-      // Also build reverse lookup: Modules table has a "Lessons" linked field auto-created
+      // Fallback: reverse link from Modules.Lessons field
       const moduleLessonsLinkMap = new Map<string, Lesson[]>();
-      modulesResponse.records.forEach(moduleRecord => {
-        const lessonLinks = moduleRecord.fields.Lessons || [];
-        if (Array.isArray(lessonLinks) && lessonLinks.length > 0) {
+      moduleRecords.forEach(mr => {
+        const links = (mr.fields as any).Lessons || [];
+        if (Array.isArray(links) && links.length > 0) {
           const lessons: Lesson[] = [];
-          lessonLinks.forEach((lessonRecordId: string) => {
-            const lessonRecord = lessonsResponse.records.find(l => l.id === lessonRecordId);
-            if (lessonRecord) {
-              const f = lessonRecord.fields;
+          links.forEach((lessonRecId: string) => {
+            const lr = lessonRecords.find(l => l.id === lessonRecId);
+            if (lr) {
+              const f = lr.fields as any;
               lessons.push({
-                id: String(f.appId || lessonRecordId),
+                id: String(f.appId || lr.id),
                 title: f.title || 'Урок',
                 description: f.description || '',
                 content: f.content || '',
@@ -157,44 +343,30 @@ class AirtableService {
                 homeworkType: (f.homeworkType || 'TEXT') as any,
                 homeworkTask: f.homeworkTask || '',
                 aiGradingInstruction: f.aiGradingInstruction || '',
-                videoUrl: f.videoUrl || ''
+                videoUrl: f.videoUrl || '',
               });
             }
           });
-          moduleLessonsLinkMap.set(moduleRecord.id, lessons);
+          moduleLessonsLinkMap.set(mr.id, lessons);
         }
       });
 
-      // Build modules with lessons
-      const modules: Module[] = [];
-
-      modulesResponse.records.forEach(moduleRecord => {
-        const fields = moduleRecord.fields;
-        const airtableRecordId = moduleRecord.id;
-
-        // Primary: lessons linked via Module field on Lessons table
-        let moduleLessons = lessonsMap.get(airtableRecordId) || [];
-
-        // Fallback: reverse link from Modules table
-        if (moduleLessons.length === 0) {
-          moduleLessons = moduleLessonsLinkMap.get(airtableRecordId) || [];
-        }
-
-        const module: Module = {
-          id: String(fields.id || airtableRecordId),
-          title: fields.title || 'Модуль',
-          description: fields.description || '',
-          category: this.mapCategory(fields.category),
-          minLevel: Number(fields.minLevel) || 1,
-          imageUrl: fields.imageUrl || '',
-          videoUrl: fields.videoUrl || '',
-          pdfUrl: fields.pdfUrl || '',
-          lessons: moduleLessons
+      const modules: Module[] = moduleRecords.map(mr => {
+        const f = mr.fields as any;
+        return {
+          id: String(f.id || mr.id),
+          title: f.title || 'Модуль',
+          description: f.description || '',
+          category: this.mapCategory(f.category),
+          minLevel: Number(f.minLevel) || 1,
+          imageUrl: f.imageUrl || '',
+          videoUrl: f.videoUrl || '',
+          pdfUrl: f.pdfUrl || '',
+          lessons: lessonsMap.get(mr.id) || moduleLessonsLinkMap.get(mr.id) || [],
         };
-
-        modules.push(module);
       });
 
+      Logger.log(`✅ Loaded ${modules.length} modules, ${lessonRecords.length} lessons in ${Date.now() - t0}ms`);
       return modules;
     } catch (error) {
       Logger.error('❌ Failed to fetch modules', error);
@@ -202,98 +374,122 @@ class AirtableService {
     }
   }
 
-  // Fetch materials
+  // ─── Materials ──────────────────────────────────────────────
   async fetchMaterials(): Promise<Material[]> {
     try {
-      const data = await this.request<{ records: any[] }>(TABLES.MATERIALS, {}, true);
-      return data.records.map(record => ({
-        id: String(record.fields.id || record.id),
-        title: record.fields.title || '',
-        description: record.fields.description || '',
-        type: (record.fields.type || 'LINK') as any,
-        url: record.fields.url || ''
-      }));
-    } catch (error) {
-      return [];
-    }
+      const records = await this.fetchAll(TABLES.MATERIALS, 'sort%5B0%5D%5Bfield%5D=sortOrder&sort%5B0%5D%5Bdirection%5D=asc', true);
+      records.forEach(r => this.setRecordId(TABLES.MATERIALS, String((r.fields as any).id || r.id), r.id));
+      return records.map(r => {
+        const f = r.fields as any;
+        return { id: String(f.id || r.id), title: f.title || '', description: f.description || '', type: (f.type || 'LINK') as any, url: f.url || '' };
+      });
+    } catch { return []; }
   }
 
-  // Fetch streams
+  // ─── Streams ────────────────────────────────────────────────
   async fetchStreams(): Promise<Stream[]> {
     try {
-      const data = await this.request<{ records: any[] }>(TABLES.STREAMS, {}, true);
-      return data.records.map(record => ({
-        id: String(record.fields.id || record.id),
-        title: record.fields.title || '',
-        date: record.fields.date || new Date().toISOString(),
-        youtubeUrl: record.fields.youtubeUrl || '',
-        status: (record.fields.status || 'UPCOMING') as any
-      }));
-    } catch (error) {
-      return [];
-    }
+      const records = await this.fetchAll(TABLES.STREAMS, 'sort%5B0%5D%5Bfield%5D=date&sort%5B0%5D%5Bdirection%5D=desc', true);
+      records.forEach(r => this.setRecordId(TABLES.STREAMS, String((r.fields as any).id || r.id), r.id));
+      return records.map(r => {
+        const f = r.fields as any;
+        return { id: String(f.id || r.id), title: f.title || '', date: f.date || new Date().toISOString(), youtubeUrl: f.youtubeUrl || '', status: (f.status || 'UPCOMING') as any };
+      });
+    } catch { return []; }
   }
 
-  // Fetch scenarios for Arena
+  // ─── Scenarios ──────────────────────────────────────────────
   async fetchScenarios(): Promise<ArenaScenario[]> {
     try {
-      const data = await this.request<{ records: any[] }>(TABLES.SCENARIOS, {}, true);
-      return data.records.map(record => ({
-        id: String(record.fields.id || record.id),
-        title: record.fields.title || '',
-        difficulty: (record.fields.difficulty || 'Medium') as any,
-        clientRole: record.fields.clientRole || '',
-        objective: record.fields.objective || '',
-        initialMessage: record.fields.initialMessage || ''
-      }));
-    } catch (error) {
-      return [];
-    }
+      const records = await this.fetchAll(TABLES.SCENARIOS, '', true);
+      records.forEach(r => this.setRecordId(TABLES.SCENARIOS, String((r.fields as any).id || r.id), r.id));
+      return records.map(r => {
+        const f = r.fields as any;
+        return { id: String(f.id || r.id), title: f.title || '', difficulty: (f.difficulty || 'Medium') as any, clientRole: f.clientRole || '', objective: f.objective || '', initialMessage: f.initialMessage || '' };
+      });
+    } catch { return []; }
   }
 
-  // Fetch calendar events
+  // ─── Events ─────────────────────────────────────────────────
   async fetchEvents(): Promise<CalendarEvent[]> {
     try {
-      const data = await this.request<{ records: any[] }>(TABLES.EVENTS, {}, true);
-      return data.records.map(record => ({
-        id: String(record.fields.id || record.id),
-        title: record.fields.title || '',
-        description: record.fields.description || '',
-        date: record.fields.date || new Date().toISOString(),
-        type: (record.fields.type || 'OTHER') as any,
-        durationMinutes: Number(record.fields.durationMinutes) || 60
-      }));
-    } catch (error) {
-      return [];
-    }
+      const records = await this.fetchAll(TABLES.EVENTS, 'sort%5B0%5D%5Bfield%5D=date&sort%5B0%5D%5Bdirection%5D=asc', true);
+      records.forEach(r => this.setRecordId(TABLES.EVENTS, String((r.fields as any).id || r.id), r.id));
+      return records.map(r => {
+        const f = r.fields as any;
+        return { id: String(f.id || r.id), title: f.title || '', description: f.description || '', date: f.date || new Date().toISOString(), type: (f.type || 'OTHER') as any, durationMinutes: Number(f.durationMinutes) || 60 };
+      });
+    } catch { return []; }
   }
 
-  // Fetch app config
+  // ─── Notifications ──────────────────────────────────────────
+  async fetchNotifications(): Promise<AppNotification[]> {
+    try {
+      const records = await this.fetchAll(TABLES.NOTIFICATIONS, 'sort%5B0%5D%5Bfield%5D=date&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=50', true);
+      return records.map(r => {
+        const f = r.fields as any;
+        return { id: r.id, title: f.title || '', message: f.message || '', type: (f.type || 'INFO') as any, date: f.date || r.createdTime || '', link: f.link, targetUserId: f.targetUserId, targetRole: f.targetRole };
+      });
+    } catch { return []; }
+  }
+
+  // ─── Config ─────────────────────────────────────────────────
   async fetchConfig(): Promise<Record<string, string>> {
     try {
-      const data = await this.request<{ records: any[] }>(TABLES.CONFIG, {}, true);
+      const records = await this.fetchAll(TABLES.CONFIG, '', true);
       const config: Record<string, string> = {};
-      data.records.forEach(record => {
-        const key = record.fields.key;
-        const value = record.fields.value;
-        if (key) config[key] = value || '';
+      records.forEach(r => {
+        const f = r.fields as any;
+        if (f.key) config[f.key] = f.value || '';
       });
       return config;
-    } catch (error) {
-      return {};
-    }
+    } catch { return {}; }
   }
 
-  // Sync user progress
+  // ─── Users ──────────────────────────────────────────────────
+  async loadUserProgress(telegramId: string): Promise<UserProgress | null> {
+    try {
+      const data = await this.request<AirtableListResponse>(
+        `${TABLES.USERS}?filterByFormula={TelegramId}="${telegramId}"`
+      );
+      if (data.records.length === 0) return null;
+
+      const record = data.records[0];
+      const f = record.fields as any;
+      const parsed = f.Data ? JSON.parse(String(f.Data)) : {};
+
+      this.setRecordId(TABLES.USERS, String(f.TelegramId), record.id);
+
+      return {
+        id: String(f.TelegramId),
+        telegramId: String(f.TelegramId),
+        name: String(f.Name || 'User'),
+        role: (f.Role || 'STUDENT') as any,
+        isAuthenticated: true,
+        xp: Number(f.XP) || 0,
+        level: Number(f.Level) || 1,
+        completedLessonIds: parsed.completedLessonIds || [],
+        submittedHomeworks: parsed.submittedHomeworks || [],
+        chatHistory: parsed.chatHistory || [],
+        notebook: parsed.notebook || [],
+        habits: parsed.habits || [],
+        goals: parsed.goals || [],
+        theme: parsed.theme || 'LIGHT',
+        notifications: parsed.notifications || { pushEnabled: false, telegramSync: false, deadlineReminders: false, chatNotifications: false },
+        airtableRecordId: record.id,
+        lastSyncTimestamp: Number(f.LastSync) || Date.now(),
+        registrationDate: record.createdTime,
+        stats: parsed.stats || { storiesPosted: 0, questionsAsked: {}, referralsCount: 0, streamsVisited: [], homeworksSpeed: {}, initiativesCount: 0 },
+      } as UserProgress;
+    } catch { return null; }
+  }
+
   async syncUserProgress(user: UserProgress): Promise<boolean> {
     try {
       const telegramId = String(user.telegramId || user.id || '');
       if (!telegramId) return false;
 
-      const checkUrl = `${TABLES.USERS}?filterByFormula={TelegramId}="${telegramId}"`;
-      const checkData = await this.request<{ records: any[] }>(checkUrl);
-
-      const userData = {
+      const userData: Record<string, any> = {
         TelegramId: telegramId,
         Name: user.name,
         Role: user.role,
@@ -302,128 +498,102 @@ class AirtableService {
         Data: JSON.stringify({
           completedLessonIds: user.completedLessonIds,
           submittedHomeworks: user.submittedHomeworks,
-          chatHistory: user.chatHistory,
+          chatHistory: (user.chatHistory || []).slice(-50), // Limit chat history to last 50
           notebook: user.notebook,
           habits: user.habits,
           goals: user.goals,
           theme: user.theme,
-          notifications: user.notifications
+          notifications: user.notifications,
+          stats: user.stats,
         }),
-        LastSync: Date.now()
+        LastSync: Date.now(),
       };
 
-      if (checkData.records.length > 0) {
-        const recordId = checkData.records[0].id;
+      const recordId = await this.resolveRecordId(TABLES.USERS, telegramId, 'TelegramId');
+
+      if (recordId) {
         await this.request(`${TABLES.USERS}/${recordId}`, {
           method: 'PATCH',
-          body: JSON.stringify({ fields: userData })
+          body: JSON.stringify({ fields: userData }),
         });
       } else {
-        await this.request(TABLES.USERS, {
+        const data = await this.request<{ id: string }>(TABLES.USERS, {
           method: 'POST',
-          body: JSON.stringify({ fields: userData })
+          body: JSON.stringify({ fields: userData }),
         });
+        this.setRecordId(TABLES.USERS, telegramId, data.id);
       }
       return true;
-    } catch (error) {
+    } catch (e) {
+      Logger.error('User sync failed', e);
       return false;
     }
   }
 
-  // Load user progress
-  async loadUserProgress(telegramId: string): Promise<UserProgress | null> {
-    try {
-      const data = await this.request<{ records: any[] }>(
-        `${TABLES.USERS}?filterByFormula={TelegramId}="${telegramId}"`
-      );
-
-      if (data.records.length === 0) return null;
-
-      const record = data.records[0];
-      const fields = record.fields;
-      const parsedData = fields.Data ? JSON.parse(String(fields.Data)) : {};
-
-      return {
-        id: String(fields.TelegramId),
-        telegramId: String(fields.TelegramId),
-        name: String(fields.Name || 'User'),
-        role: (fields.Role || 'STUDENT') as any,
-        isAuthenticated: true,
-        xp: Number(fields.XP) || 0,
-        level: Number(fields.Level) || 1,
-        completedLessonIds: parsedData.completedLessonIds || [],
-        submittedHomeworks: parsedData.submittedHomeworks || [],
-        chatHistory: parsedData.chatHistory || [],
-        notebook: parsedData.notebook || [],
-        habits: parsedData.habits || [],
-        goals: parsedData.goals || [],
-        theme: parsedData.theme || 'LIGHT',
-        notifications: parsedData.notifications || {
-          pushEnabled: false,
-          telegramSync: false,
-          deadlineReminders: false,
-          chatNotifications: false
-        },
-        airtableRecordId: record.id,
-        lastSyncTimestamp: Number(fields.LastSync) || Date.now(),
-        registrationDate: record.createdTime
-      } as UserProgress;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  // Get Leaderboard
   async getLeaderboard(): Promise<UserProgress[]> {
     try {
-      const data = await this.request<{ records: any[] }>(
-        `${TABLES.USERS}?sort%5B0%5D%5Bfield%5D=XP&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=50`,
-        {},
-        true
-      );
+      const records = await this.fetchAll(TABLES.USERS, 'sort%5B0%5D%5Bfield%5D=XP&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=50', true);
+      return records.map(r => {
+        const f = r.fields as any;
+        return {
+          id: String(f.TelegramId),
+          telegramId: String(f.TelegramId),
+          name: String(f.Name || 'Аноним'),
+          role: f.Role as any,
+          xp: Number(f.XP) || 0,
+          level: Number(f.Level) || 1,
+          isAuthenticated: false,
+        } as UserProgress;
+      });
+    } catch { return []; }
+  }
 
-      return data.records.map(record => ({
-        id: String(record.fields.TelegramId),
-        telegramId: String(record.fields.TelegramId),
-        name: String(record.fields.Name || 'Аноним'),
-        role: record.fields.Role as any,
-        xp: Number(record.fields.XP) || 0,
-        level: Number(record.fields.Level) || 1,
-        isAuthenticated: false
-      } as UserProgress));
-    } catch (error) {
-      return [];
+  // ═════════════════════════════════════════════════════════════
+  //                  SAVE / SYNC OPERATIONS
+  // ═════════════════════════════════════════════════════════════
+
+  // ─── Generic Upsert for simple entities ─────────────────────
+  private async upsertRecord(table: string, appId: string, fields: Record<string, any>, idField = 'id'): Promise<string> {
+    const recordId = await this.resolveRecordId(table, appId, idField);
+
+    if (recordId) {
+      await this.request(`${table}/${recordId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ fields }),
+      });
+      return recordId;
+    } else {
+      const data = await this.request<{ id: string }>(table, {
+        method: 'POST',
+        body: JSON.stringify({ fields }),
+      });
+      this.setRecordId(table, appId, data.id);
+      return data.id;
     }
   }
 
-  // Fetch Notifications
-  async fetchNotifications(): Promise<AppNotification[]> {
+  // ─── Generic Delete ─────────────────────────────────────────
+  async deleteRecord(table: string, appId: string, idField = 'id'): Promise<boolean> {
     try {
-      const data = await this.request<{ records: any[] }>(
-        `${TABLES.NOTIFICATIONS}?sort%5B0%5D%5Bfield%5D=date&sort%5B0%5D%5Bdirection%5D=desc&maxRecords=20`,
-        {},
-        true
-      );
-
-      return data.records.map(record => ({
-        id: record.id,
-        title: record.fields.title || '',
-        message: record.fields.message || '',
-        type: (record.fields.type || 'INFO') as any,
-        date: record.fields.date || record.createdTime,
-        link: record.fields.link,
-        targetUserId: record.fields.targetUserId,
-        targetRole: record.fields.targetRole
-      }));
-    } catch (error) {
-      return [];
+      const recordId = await this.resolveRecordId(table, appId, idField);
+      if (!recordId) {
+        Logger.log(`⚠️ Record not found in ${table} for ${idField}="${appId}"`);
+        return false;
+      }
+      await this.request(`${table}/${recordId}`, { method: 'DELETE' });
+      this.recordIdMap.get(table)?.delete(appId);
+      Logger.log(`🗑️ Deleted ${table} record: ${appId}`);
+      return true;
+    } catch (e) {
+      Logger.error(`Failed to delete from ${table}`, e);
+      return false;
     }
   }
 
-  // Save a single module (upsert by custom 'id' field)
-  async saveModule(module: Module, sortOrder: number = 0): Promise<void> {
+  // ─── Modules ────────────────────────────────────────────────
+  async saveModule(module: Module, sortOrder = 0): Promise<void> {
     try {
-      const fields: Record<string, any> = {
+      await this.upsertRecord(TABLES.MODULES, module.id, {
         id: module.id,
         title: module.title,
         description: module.description,
@@ -432,46 +602,21 @@ class AirtableService {
         imageUrl: module.imageUrl || '',
         videoUrl: module.videoUrl || '',
         pdfUrl: module.pdfUrl || '',
-        sortOrder: sortOrder
-      };
-
-      // Check if record exists
-      const checkData = await this.request<{ records: any[] }>(
-        `${TABLES.MODULES}?filterByFormula={id}="${module.id}"`
-      );
-
-      if (checkData.records.length > 0) {
-        const recordId = checkData.records[0].id;
-        await this.request(`${TABLES.MODULES}/${recordId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ fields })
-        });
-      } else {
-        await this.request(TABLES.MODULES, {
-          method: 'POST',
-          body: JSON.stringify({ fields })
-        });
-      }
+        sortOrder,
+      });
       this.clearCache();
-    } catch (error) {
-      Logger.error(`Failed to save module ${module.id}`, error);
+    } catch (e) {
+      Logger.error(`Failed to save module ${module.id}`, e);
     }
   }
 
-  // Get the Airtable record ID of a module by its app-level 'id' field
-  private async getModuleRecordId(moduleAppId: string): Promise<string | null> {
-    try {
-      const data = await this.request<{ records: any[] }>(
-        `${TABLES.MODULES}?filterByFormula={id}="${moduleAppId}"`
-      );
-      return data.records.length > 0 ? data.records[0].id : null;
-    } catch {
-      return null;
-    }
+  async deleteModule(moduleId: string): Promise<void> {
+    await this.deleteRecord(TABLES.MODULES, moduleId);
+    this.clearCache();
   }
 
-  // Save a single lesson (upsert by 'appId' field, link to Module via record ID)
-  async saveLesson(lesson: Lesson, moduleId: string, sortOrder: number = 0): Promise<void> {
+  // ─── Lessons ────────────────────────────────────────────────
+  async saveLesson(lesson: Lesson, moduleId: string, sortOrder = 0): Promise<void> {
     try {
       const fields: Record<string, any> = {
         appId: lesson.id,
@@ -483,48 +628,306 @@ class AirtableService {
         homeworkTask: lesson.homeworkTask || '',
         aiGradingInstruction: lesson.aiGradingInstruction || '',
         videoUrl: lesson.videoUrl || '',
-        order: sortOrder
+        order: sortOrder,
       };
 
-      // Resolve module's Airtable record ID for the linked record field
-      const moduleRecordId = await this.getModuleRecordId(moduleId);
+      // Resolve module Airtable record ID for linked field
+      const moduleRecordId = await this.resolveRecordId(TABLES.MODULES, moduleId);
       if (moduleRecordId) {
         fields.Module = [moduleRecordId];
       }
 
-      // Check if lesson record exists by appId
-      const checkData = await this.request<{ records: any[] }>(
-        `${TABLES.LESSONS}?filterByFormula={appId}="${lesson.id}"`
-      );
-
-      if (checkData.records.length > 0) {
-        const recordId = checkData.records[0].id;
-        await this.request(`${TABLES.LESSONS}/${recordId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ fields })
-        });
-      } else {
-        await this.request(TABLES.LESSONS, {
-          method: 'POST',
-          body: JSON.stringify({ fields })
-        });
-      }
+      await this.upsertRecord(TABLES.LESSONS, lesson.id, fields, 'appId');
       this.clearCache();
-    } catch (error) {
-      Logger.error(`Failed to save lesson ${lesson.id}`, error);
+    } catch (e) {
+      Logger.error(`Failed to save lesson ${lesson.id}`, e);
     }
   }
 
-  // Helper methods
-  private mapCategory(airtableCategory: any): any {
-    const category = String(airtableCategory || '').toUpperCase();
-    if (category === 'SALES' || category.includes('SALES') || category.includes('ПРОДАЖ')) return 'SALES';
-    if (category === 'PSYCHOLOGY' || category.includes('PSYCH') || category.includes('ПСИХОЛ')) return 'PSYCHOLOGY';
-    if (category === 'TACTICS' || category.includes('TACTIC') || category.includes('ТАКТИК')) return 'TACTICS';
+  async deleteLesson(lessonId: string): Promise<void> {
+    await this.deleteRecord(TABLES.LESSONS, lessonId, 'appId');
+    this.clearCache();
+  }
+
+  // ─── Materials ──────────────────────────────────────────────
+  async saveMaterial(material: Material, sortOrder = 0): Promise<void> {
+    try {
+      await this.upsertRecord(TABLES.MATERIALS, material.id, {
+        id: material.id,
+        title: material.title,
+        description: material.description || '',
+        type: material.type,
+        url: material.url || '',
+        sortOrder,
+      });
+      this.clearCache();
+    } catch (e) {
+      Logger.error(`Failed to save material ${material.id}`, e);
+    }
+  }
+
+  async deleteMaterial(materialId: string): Promise<void> {
+    await this.deleteRecord(TABLES.MATERIALS, materialId);
+    this.clearCache();
+  }
+
+  // ─── Streams ────────────────────────────────────────────────
+  async saveStream(stream: Stream): Promise<void> {
+    try {
+      await this.upsertRecord(TABLES.STREAMS, stream.id, {
+        id: stream.id,
+        title: stream.title,
+        date: stream.date,
+        youtubeUrl: stream.youtubeUrl || '',
+        status: stream.status,
+      });
+      this.clearCache();
+    } catch (e) {
+      Logger.error(`Failed to save stream ${stream.id}`, e);
+    }
+  }
+
+  async deleteStream(streamId: string): Promise<void> {
+    await this.deleteRecord(TABLES.STREAMS, streamId);
+    this.clearCache();
+  }
+
+  // ─── Scenarios ──────────────────────────────────────────────
+  async saveScenario(scenario: ArenaScenario): Promise<void> {
+    try {
+      await this.upsertRecord(TABLES.SCENARIOS, scenario.id, {
+        id: scenario.id,
+        title: scenario.title,
+        difficulty: scenario.difficulty,
+        clientRole: scenario.clientRole,
+        objective: scenario.objective || '',
+        initialMessage: scenario.initialMessage || '',
+      });
+      this.clearCache();
+    } catch (e) {
+      Logger.error(`Failed to save scenario ${scenario.id}`, e);
+    }
+  }
+
+  async deleteScenario(scenarioId: string): Promise<void> {
+    await this.deleteRecord(TABLES.SCENARIOS, scenarioId);
+    this.clearCache();
+  }
+
+  // ─── Events ─────────────────────────────────────────────────
+  async saveEvent(event: CalendarEvent): Promise<void> {
+    try {
+      const dateStr = event.date instanceof Date ? event.date.toISOString() : event.date;
+      await this.upsertRecord(TABLES.EVENTS, event.id, {
+        id: event.id,
+        title: event.title,
+        description: event.description || '',
+        date: dateStr,
+        type: event.type,
+        durationMinutes: event.durationMinutes || 60,
+      });
+      this.clearCache();
+    } catch (e) {
+      Logger.error(`Failed to save event ${event.id}`, e);
+    }
+  }
+
+  async deleteEvent(eventId: string): Promise<void> {
+    await this.deleteRecord(TABLES.EVENTS, eventId);
+    this.clearCache();
+  }
+
+  // ─── Notifications (Broadcast) ──────────────────────────────
+  async sendNotification(notif: AppNotification): Promise<void> {
+    try {
+      await this.request(TABLES.NOTIFICATIONS, {
+        method: 'POST',
+        body: JSON.stringify({
+          fields: {
+            title: notif.title,
+            message: notif.message,
+            type: notif.type,
+            date: notif.date || new Date().toISOString(),
+            targetRole: notif.targetRole || 'ALL',
+            targetUserId: notif.targetUserId || '',
+            link: notif.link || '',
+          },
+        }),
+      });
+      this.clearCache();
+      Logger.log('📨 Notification saved to Airtable');
+    } catch (e) {
+      Logger.error('Failed to send notification', e);
+    }
+  }
+
+  // ─── Config ─────────────────────────────────────────────────
+  async saveConfig(config: AppConfig): Promise<void> {
+    try {
+      // Save as key-value pairs in Config table
+      const configPairs: Record<string, string> = {
+        appName: config.appName,
+        appDescription: config.appDescription,
+        primaryColor: config.primaryColor,
+        systemInstruction: config.systemInstruction,
+        welcomeVideoUrl: config.welcomeVideoUrl || '',
+        welcomeMessage: config.welcomeMessage || '',
+        features: JSON.stringify(config.features),
+        aiConfig: JSON.stringify(config.aiConfig),
+        integrations: JSON.stringify({
+          // Exclude PAT from being saved to a config table for security
+          telegramBotToken: config.integrations.telegramBotToken,
+          googleDriveFolderId: config.integrations.googleDriveFolderId,
+          crmWebhookUrl: config.integrations.crmWebhookUrl,
+          aiModelVersion: config.integrations.aiModelVersion,
+          inviteBaseUrl: config.integrations.inviteBaseUrl,
+        }),
+        systemAgent: JSON.stringify(config.systemAgent),
+      };
+
+      // Fetch existing config records
+      const existing = await this.fetchAll(TABLES.CONFIG);
+      const existingMap = new Map<string, string>();
+      existing.forEach(r => {
+        const f = r.fields as any;
+        if (f.key) existingMap.set(f.key, r.id);
+      });
+
+      // Batch update existing + create new
+      const toUpdate: Array<{ id: string; fields: Record<string, any> }> = [];
+      const toCreate: Array<{ fields: Record<string, any> }> = [];
+
+      for (const [key, value] of Object.entries(configPairs)) {
+        if (existingMap.has(key)) {
+          toUpdate.push({ id: existingMap.get(key)!, fields: { key, value } });
+        } else {
+          toCreate.push({ fields: { key, value } });
+        }
+      }
+
+      if (toUpdate.length > 0) await this.batchUpdate(TABLES.CONFIG, toUpdate);
+      if (toCreate.length > 0) await this.batchCreate(TABLES.CONFIG, toCreate);
+
+      this.clearCache();
+      Logger.log('✅ Config saved to Airtable');
+    } catch (e) {
+      Logger.error('Failed to save config', e);
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  //              COLLECTION SYNC (Diff-based)
+  // ═════════════════════════════════════════════════════════════
+
+  /**
+   * Smart sync: Compares local state with Airtable, performs minimal operations.
+   * - Creates new records
+   * - Updates changed records
+   * - Deletes removed records
+   */
+  async syncModules(localModules: Module[]): Promise<void> {
+    try {
+      Logger.log(`🔄 Syncing ${localModules.length} modules to Airtable...`);
+
+      // Save modules with sort order
+      await Promise.all(localModules.map((mod, i) => this.saveModule(mod, i)));
+
+      // Sync all lessons per module
+      for (const mod of localModules) {
+        // Find orphaned lessons in Airtable that are no longer in local state
+        const remoteRecords = await this.fetchAll(TABLES.LESSONS,
+          `filterByFormula=FIND("${mod.id}",ARRAYJOIN({Module}))`,
+        );
+
+        const localLessonIds = new Set(mod.lessons.map(l => l.id));
+        const orphanedRecordIds = remoteRecords
+          .filter(r => !localLessonIds.has(String((r.fields as any).appId || r.id)))
+          .map(r => r.id);
+
+        if (orphanedRecordIds.length > 0) {
+          Logger.log(`🗑️ Removing ${orphanedRecordIds.length} orphaned lessons from module ${mod.id}`);
+          await this.batchDelete(TABLES.LESSONS, orphanedRecordIds);
+        }
+
+        // Save current lessons
+        await Promise.all(mod.lessons.map((lesson, li) => this.saveLesson(lesson, mod.id, li)));
+      }
+
+      // Check for orphaned modules in Airtable
+      const remoteModules = await this.fetchAll(TABLES.MODULES);
+      const localModuleIds = new Set(localModules.map(m => m.id));
+      const orphanedModuleIds = remoteModules
+        .filter(r => !localModuleIds.has(String((r.fields as any).id || r.id)))
+        .map(r => r.id);
+
+      if (orphanedModuleIds.length > 0) {
+        Logger.log(`🗑️ Removing ${orphanedModuleIds.length} orphaned modules`);
+        await this.batchDelete(TABLES.MODULES, orphanedModuleIds);
+      }
+
+      Logger.log('✅ Modules sync complete');
+    } catch (e) {
+      Logger.error('Module sync failed', e);
+    }
+  }
+
+  async syncCollection<T extends { id: string }>(
+    table: string,
+    localItems: T[],
+    toFields: (item: T, index: number) => Record<string, any>
+  ): Promise<void> {
+    try {
+      Logger.log(`🔄 Syncing ${localItems.length} items to ${table}...`);
+
+      // Save all local items
+      for (let i = 0; i < localItems.length; i++) {
+        const fields = toFields(localItems[i], i);
+        await this.upsertRecord(table, localItems[i].id, fields);
+      }
+
+      // Delete orphans
+      const remote = await this.fetchAll(table);
+      const localIds = new Set(localItems.map(item => item.id));
+      const orphans = remote.filter(r => {
+        const remoteAppId = String((r.fields as any).id || r.id);
+        return !localIds.has(remoteAppId);
+      }).map(r => r.id);
+
+      if (orphans.length > 0) {
+        Logger.log(`🗑️ Deleting ${orphans.length} orphaned records from ${table}`);
+        await this.batchDelete(table, orphans);
+      }
+
+      this.clearCache();
+      Logger.log(`✅ ${table} sync complete`);
+    } catch (e) {
+      Logger.error(`${table} sync failed`, e);
+    }
+  }
+
+  // ═════════════════════════════════════════════════════════════
+  //                        UTILITIES
+  // ═════════════════════════════════════════════════════════════
+
+  private mapCategory(c: any): any {
+    const cat = String(c || '').toUpperCase();
+    if (cat === 'SALES' || cat.includes('SALES') || cat.includes('ПРОДАЖ')) return 'SALES';
+    if (cat === 'PSYCHOLOGY' || cat.includes('PSYCH') || cat.includes('ПСИХОЛ')) return 'PSYCHOLOGY';
+    if (cat === 'TACTICS' || cat.includes('TACTIC') || cat.includes('ТАКТИК')) return 'TACTICS';
     return 'GENERAL';
+  }
+
+  // Quick connectivity check
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.request(`${TABLES.CONFIG}?maxRecords=1`, {}, false);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 
-// Export both for backward compatibility
+// Export
 export const airtableService = new AirtableService();
 export const airtable = airtableService;
