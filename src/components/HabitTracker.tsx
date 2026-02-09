@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Habit, Goal, SmartNavAction } from '../types';
 import { telegram } from '../services/telegramService';
-import { XPService } from '../services/xpService';
+
 
 interface HabitTrackerProps {
     habits: Habit[];
