@@ -7,3 +7,4 @@ export { StreamsPage } from './StreamsPage';
 export { ModulesPage } from './ModulesPage';
 export { ProfilePage } from './ProfilePage';
 export { AdminPage } from './AdminPage';
+export { RatingPage } from './RatingPage';
