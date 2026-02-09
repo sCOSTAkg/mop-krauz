@@ -23,6 +23,7 @@ export const ProfilePage = () => {
         onLogin={ctx.handleLogin}
         onNavigate={ctx.setActiveTab}
         setNavAction={ctx.setNavAction}
+        modules={ctx.modules}
       />
     </Suspense>
   );
