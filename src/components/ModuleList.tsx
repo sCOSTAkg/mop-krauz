@@ -75,7 +75,7 @@ export const ModuleList: React.FC<ModuleListProps> = React.memo(({ modules, user
                 <div
                     key={module.id}
                     className={`
-                        relative overflow-hidden rounded-2xl glass-card
+                        relative overflow-hidden rounded-2xl bg-card border border-border-color
                         transition-all duration-300 ease-out
                         ${shakingId === module.id ? 'animate-shake' : ''}
                         ${isExpanded ? 'shadow-md' : 'shadow-sm'}
@@ -134,7 +134,7 @@ export const ModuleList: React.FC<ModuleListProps> = React.memo(({ modules, user
                                     <div className="relative w-9 h-9">
                                         <svg className="w-9 h-9 -rotate-90" viewBox="0 0 36 36">
                                             <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-body" />
-                                            <circle cx="18" cy="18" r="15" fill="none" stroke={isCompleted ? '#34C759' : '#6C5DD3'} strokeWidth="2.5"
+                                            <circle cx="18" cy="18" r="15" fill="none" stroke={isCompleted ? '#34C759' : 'var(--color-accent)'} strokeWidth="2.5"
                                                 strokeDasharray={`${progressPercent * 0.942} 100`}
                                                 strokeLinecap="round" className="transition-all duration-700"
                                             />
@@ -160,7 +160,7 @@ export const ModuleList: React.FC<ModuleListProps> = React.memo(({ modules, user
                                     className="h-full transition-all duration-700"
                                     style={{
                                         width: `${progressPercent}%`,
-                                        backgroundColor: isCompleted ? '#34C759' : '#6C5DD3'
+                                        backgroundColor: isCompleted ? '#34C759' : 'var(--color-accent)'
                                     }}
                                 />
                             </div>
@@ -192,7 +192,7 @@ export const ModuleList: React.FC<ModuleListProps> = React.memo(({ modules, user
                                             cursor-pointer active:scale-[0.98]
                                             ${isDone
                                                 ? 'bg-[#34C759]/5 border-[#34C759]/20'
-                                                : 'bg-body/50 border-border-color hover:border-[#6C5DD3]/30 backdrop-blur-sm'
+                                                : 'bg-body/50 border-border-color hover:border-accent/30 backdrop-blur-sm'
                                             }
                                         `}
                                     >
