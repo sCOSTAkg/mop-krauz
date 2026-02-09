@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { SmartNav } from '../components/SmartNav';
-import { Toast, ToastMessage } from '../components/Toast';
+import { Toast } from '../components/Toast';
 import { useAppState } from '../hooks/useAppState';
 import { useSync } from '../hooks/useSync';
 import { useTheme } from '../hooks/useTheme';
