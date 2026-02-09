@@ -3,7 +3,6 @@ import React, { useMemo } from 'react';
 import { Tab, UserProgress, Lesson, Material, Stream, ArenaScenario, AppNotification, Module, AppConfig } from '../types';
 import { telegram } from '../services/telegramService';
 import { Avatar } from '../utils/avatar';
-import { XP_RULES } from '../services/xpService';
 
 // ─── Types ──────────────────────────────────────────────────────
 interface HomeDashboardProps {
