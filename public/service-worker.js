@@ -1,75 +1,63 @@
+const CACHE_NAME = 'salespro-v4';
+const STATIC_CACHE = 'salespro-static-v4';
 
-const CACHE_NAME = 'salespro-v3';
-const urlsToCache = [
+const PRECACHE_URLS = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
 ];
 
+// Install — precache shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_URLS))
   );
   self.skipWaiting();
 });
 
+// Activate — clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys().then(names =>
+      Promise.all(names.filter(n => n !== CACHE_NAME && n !== STATIC_CACHE).map(n => caches.delete(n)))
+    )
   );
   self.clients.claim();
 });
 
+// Fetch strategies
 self.addEventListener('fetch', (event) => {
-  // Navigation requests for SPA — network first, fallback to cache
+  const url = new URL(event.request.url);
+
+  // SPA navigation — network first, fallback to cached shell
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .catch(() => caches.match('/index.html'))
-        .then((response) => response || caches.match('/index.html'))
+      fetch(event.request).catch(() => caches.match('/index.html')).then(r => r || caches.match('/index.html'))
     );
     return;
   }
 
-  // API or External requests — pass through
-  if (event.request.url.includes('google') || event.request.url.includes('supabase') || event.request.url.includes('telegram')) {
+  // Skip external APIs
+  if (url.hostname.includes('google') || url.hostname.includes('supabase') || url.hostname.includes('telegram') || url.hostname.includes('airtable')) {
     return;
   }
 
-  // Static assets — cache first, network fallback
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      if (response) {
-        return response;
-      }
+  // Static assets — stale-while-revalidate
+  if (event.request.method === 'GET' && (url.origin === self.location.origin || url.hostname.includes('cdn'))) {
+    event.respondWith(
+      caches.open(STATIC_CACHE).then(cache =>
+        cache.match(event.request).then(cached => {
+          const fetched = fetch(event.request).then(response => {
+            if (response && response.status === 200) {
+              cache.put(event.request, response.clone());
+            }
+            return response;
+          }).catch(() => cached);
 
-      const fetchRequest = event.request.clone();
-
-      return fetch(fetchRequest).then((response) => {
-        if (!response || response.status !== 200 || response.type === 'error') {
-          return response;
-        }
-
-        if (event.request.method === 'GET' && (event.request.url.startsWith(self.location.origin) || event.request.url.includes('cdn'))) {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-
-        return response;
-      });
-    })
-  );
+          return cached || fetched;
+        })
+      )
+    );
+    return;
+  }
 });
