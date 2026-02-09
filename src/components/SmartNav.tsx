@@ -314,7 +314,7 @@ export const SmartNav: React.FC<SmartNavProps> = ({
       {action && renderAction()}
 
       {/* ═══ Main Tab Bar ═══ */}
-      <div className="bg-surface/95 backdrop-blur-md border-t border-border-color pb-[var(--safe-bottom)]">
+      <div className="nav-bar pb-[var(--safe-bottom)]">
         <div className="flex items-center justify-around h-14 max-w-lg mx-auto px-2">
           {/* Back button */}
           {showBackButton && (
