@@ -75,8 +75,7 @@ export const ModuleList: React.FC<ModuleListProps> = React.memo(({ modules, user
                 <div
                     key={module.id}
                     className={`
-                        relative overflow-hidden rounded-2xl bg-card
-                        border border-border-color
+                        relative overflow-hidden rounded-2xl glass-card
                         transition-all duration-300 ease-out
                         ${shakingId === module.id ? 'animate-shake' : ''}
                         ${isExpanded ? 'shadow-md' : 'shadow-sm'}
@@ -178,7 +177,7 @@ export const ModuleList: React.FC<ModuleListProps> = React.memo(({ modules, user
                             <p className="text-xs text-text-secondary px-4 pb-3 leading-relaxed">{module.description}</p>
                         )}
 
-                        <div className="px-3 pb-3 space-y-1.5">
+                        <div className="px-3 pb-3 space-y-1.5 stagger">
                             {module.lessons.map((lesson, lIdx) => {
                                 const isDone = userProgress.completedLessonIds.includes(lesson.id);
                                 const thumb = getYouTubeThumbnail(lesson.videoUrl);
@@ -193,7 +192,7 @@ export const ModuleList: React.FC<ModuleListProps> = React.memo(({ modules, user
                                             cursor-pointer active:scale-[0.98]
                                             ${isDone
                                                 ? 'bg-[#34C759]/5 border-[#34C759]/20'
-                                                : 'bg-body border-border-color hover:border-[#6C5DD3]/30'
+                                                : 'bg-body/50 border-border-color hover:border-[#6C5DD3]/30 backdrop-blur-sm'
                                             }
                                         `}
                                     >
