@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { UserProgress, CalendarEvent, UserRole, AppConfig, Tab, SmartNavAction, Module, AppTheme } from '../types';
+import { UserProgress, CalendarEvent, AppConfig, Tab, SmartNavAction, Module, AppTheme } from '../types';
 import { CalendarView } from './CalendarView';
 import { telegram } from '../services/telegramService';
 import { Avatar } from '../utils/avatar';
