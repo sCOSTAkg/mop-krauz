@@ -1,294 +1,291 @@
 <!DOCTYPE html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚔️</text></svg>">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#EFF1F5" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="SalesPro" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
-    <link rel="manifest" href="/manifest.json" />
-    <title>SalesPro: 300 Spartans</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            colors: {
-              body: 'var(--bg-body)',
-              surface: 'var(--bg-surface)',
-              card: 'var(--bg-card)',
-              'card-alt': 'var(--bg-card-alt)',
-              'text-primary': 'var(--text-primary)',
-              'text-secondary': 'var(--text-secondary)',
-              'text-tertiary': 'var(--text-tertiary)',
-              'border-color': 'var(--border-color)',
-              accent: 'var(--color-accent)',
-              'accent-light': 'var(--color-accent-light)',
-            },
-            borderRadius: {
-              '2xl': '16px',
-              '3xl': '20px',
-              '4xl': '24px',
-            },
-            boxShadow: {
-              'card': 'var(--shadow-card)',
-              'card-hover': 'var(--shadow-card-hover)',
-              'soft': '0 1px 3px rgba(0,0,0,0.04)',
-            },
-            animation: {
-              'fade-in': 'fade-in 0.35s ease-out both',
-              'slide-up': 'slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both',
-              'scale-in': 'scale-in 0.25s ease-out both',
-            },
-            keyframes: {
-              'fade-in': { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
-              'slide-up': { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-              'scale-in': { '0%': { opacity: '0', transform: 'scale(0.96)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
-            },
-          }
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚔️</text></svg>">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#EFF1F5" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="SalesPro" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>SalesPro: 300 Spartans</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            body: 'var(--bg-body)',
+            surface: 'var(--bg-surface)',
+            card: 'var(--bg-card)',
+            'card-alt': 'var(--bg-card-alt)',
+            'text-primary': 'var(--text-primary)',
+            'text-secondary': 'var(--text-secondary)',
+            'text-tertiary': 'var(--text-tertiary)',
+            'border-color': 'var(--border-color)',
+            accent: 'var(--color-accent)',
+            'accent-light': 'var(--color-accent-light)',
+          },
+          borderRadius: {
+            '2xl': '16px',
+            '3xl': '20px',
+            '4xl': '24px',
+          },
+          boxShadow: {
+            'card': 'var(--shadow-card)',
+            'card-hover': 'var(--shadow-card-hover)',
+            'soft': '0 1px 3px rgba(0,0,0,0.04)',
+          },
+          animation: {
+            'fade-in': 'fade-in 0.35s ease-out both',
+            'slide-up': 'slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both',
+            'scale-in': 'scale-in 0.25s ease-out both',
+            'toast-in': 'toast-in 0.3s ease-out both',
+            'toast-out': 'toast-out 0.3s ease-in both',
+          },
+          keyframes: {
+            'fade-in': { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+            'slide-up': { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+            'scale-in': { '0%': { opacity: '0', transform: 'scale(0.96)' }, '100%': { opacity: '1', transform: 'scale(1)' } },
+            'toast-in': { '0%': { opacity: '0', transform: 'translateY(-16px) scale(0.96)' }, '100%': { opacity: '1', transform: 'translateY(0) scale(1)' } },
+            'toast-out': { '0%': { opacity: '1', transform: 'translateY(0) scale(1)' }, '100%': { opacity: '0', transform: 'translateY(-16px) scale(0.92)' } },
+          },
         }
       }
-    </script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/src/styles/toast-animations.css">
-    <style>
-      /* ═══ V4 DESIGN — Light Corporate / SugarCRM Style ═══ */
+    }
+  </script>
 
-      :root {
-        --bg-body: #EFF1F5;
-        --bg-surface: #FFFFFF;
-        --bg-card: #FFFFFF;
-        --bg-card-alt: #F7F8FA;
-        --text-primary: #1A1D26;
-        --text-secondary: #6B7084;
-        --text-tertiary: #9DA3B4;
-        --border-color: rgba(0,0,0,0.06);
-        --color-accent: #4A6CF7;
-        --color-accent-light: #EEF1FE;
-        --shadow-card: 0 2px 16px rgba(0,0,0,0.05);
-        --shadow-card-hover: 0 6px 24px rgba(0,0,0,0.08);
-        --safe-top: env(safe-area-inset-top, 0px);
-        --safe-bottom: env(safe-area-inset-bottom, 0px);
-      }
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-      html.dark {
-        --bg-body: #13151C;
-        --bg-surface: #1C1F2A;
-        --bg-card: #222636;
-        --bg-card-alt: #1C1F2A;
-        --text-primary: #F0F1F5;
-        --text-secondary: #8B90A5;
-        --text-tertiary: #5A5F73;
-        --border-color: rgba(255,255,255,0.06);
-        --color-accent: #5B7BF9;
-        --color-accent-light: rgba(91,123,249,0.12);
-        --shadow-card: 0 2px 16px rgba(0,0,0,0.2);
-        --shadow-card-hover: 0 6px 24px rgba(0,0,0,0.3);
-      }
+  <style>
+    /* ═══ V4 DESIGN — Light Corporate / SugarCRM Style ═══ */
+    :root {
+      --bg-body: #EFF1F5;
+      --bg-surface: #FFFFFF;
+      --bg-card: #FFFFFF;
+      --bg-card-alt: #F7F8FA;
+      --text-primary: #1A1D26;
+      --text-secondary: #6B7084;
+      --text-tertiary: #9DA3B4;
+      --border-color: rgba(0,0,0,0.06);
+      --color-accent: #4A6CF7;
+      --color-accent-light: #EEF1FE;
+      --shadow-card: 0 2px 16px rgba(0,0,0,0.05);
+      --shadow-card-hover: 0 6px 24px rgba(0,0,0,0.08);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
 
-      * { box-sizing: border-box; }
+    html.dark {
+      --bg-body: #13151C;
+      --bg-surface: #1C1F2A;
+      --bg-card: #222636;
+      --bg-card-alt: #1C1F2A;
+      --text-primary: #F0F1F5;
+      --text-secondary: #8B90A5;
+      --text-tertiary: #5A5F73;
+      --border-color: rgba(255,255,255,0.06);
+      --color-accent: #5B7BF9;
+      --color-accent-light: rgba(91,123,249,0.12);
+      --shadow-card: 0 2px 16px rgba(0,0,0,0.2);
+      --shadow-card-hover: 0 6px 24px rgba(0,0,0,0.3);
+    }
 
-      body {
-        background: var(--bg-body);
-        color: var(--text-primary);
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        margin: 0; padding: 0; overflow: hidden;
-        -webkit-tap-highlight-color: transparent;
-        -webkit-font-smoothing: antialiased;
-        user-select: none; min-height: 100dvh;
-      }
-      #root { min-height: 100dvh; }
+    * { box-sizing: border-box; }
 
-      /* ═══ CARD ═══ */
-      .card {
-        background: var(--bg-card);
-        border-radius: 20px;
-        box-shadow: var(--shadow-card);
-        transition: box-shadow 0.2s, transform 0.15s;
-      }
-      .card:active { transform: scale(0.98); box-shadow: var(--shadow-card-hover); }
-      .card-flat {
-        background: var(--bg-card);
-        border-radius: 20px;
-        border: 1px solid var(--border-color);
-      }
+    body {
+      background: var(--bg-body);
+      color: var(--text-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0; padding: 0; overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+      user-select: none; min-height: 100dvh;
+    }
 
-      /* ═══ PILL BADGE ═══ */
-      .pill {
-        display: inline-flex; align-items: center; gap: 4px;
-        padding: 4px 12px; border-radius: 100px;
-        font-size: 11px; font-weight: 600;
-        line-height: 1.4;
-      }
-      .pill-blue { background: var(--color-accent-light); color: var(--color-accent); }
-      .pill-green { background: #E8F8EE; color: #1EA952; }
-      .pill-pink { background: #FDEEF3; color: #E5487A; }
-      .pill-orange { background: #FEF3E5; color: #E08827; }
-      .pill-gray { background: var(--bg-card-alt); color: var(--text-secondary); }
-      html.dark .pill-green { background: rgba(30,169,82,0.12); }
-      html.dark .pill-pink { background: rgba(229,72,122,0.12); }
-      html.dark .pill-orange { background: rgba(224,136,39,0.12); }
+    #root { min-height: 100dvh; }
 
-      /* ═══ PROGRESS BAR ═══ */
-      .progress-track {
-        height: 6px; border-radius: 3px;
-        background: var(--bg-card-alt);
-        overflow: hidden;
-      }
-      .progress-fill {
-        height: 100%; border-radius: 3px;
-        transition: width 0.7s cubic-bezier(0.16,1,0.3,1);
-      }
+    /* ═══ CARD ═══ */
+    .card {
+      background: var(--bg-card);
+      border-radius: 20px;
+      box-shadow: var(--shadow-card);
+      transition: box-shadow 0.2s, transform 0.15s;
+    }
+    .card:active { transform: scale(0.98); box-shadow: var(--shadow-card-hover); }
 
-      /* ═══ PROGRESS DOTS ═══ */
-      .dot-progress { display: flex; gap: 4px; align-items: center; }
-      .dot-progress span {
-        width: 6px; height: 6px; border-radius: 50%;
-        transition: all 0.3s;
-      }
+    .card-flat {
+      background: var(--bg-card);
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+    }
 
-      /* ═══ AVATAR ═══ */
-      .avatar-ring {
-        border: 2px solid var(--bg-body);
-        box-shadow: 0 0 0 1px var(--border-color);
-      }
+    /* ═══ PILL BADGE ═══ */
+    .pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 12px; border-radius: 100px;
+      font-size: 11px; font-weight: 600; line-height: 1.4;
+    }
+    .pill-blue { background: var(--color-accent-light); color: var(--color-accent); }
+    .pill-green { background: #E8F8EE; color: #1EA952; }
+    .pill-pink { background: #FDEEF3; color: #E5487A; }
+    .pill-orange { background: #FEF3E5; color: #E08827; }
+    .pill-gray { background: var(--bg-card-alt); color: var(--text-secondary); }
+    html.dark .pill-green { background: rgba(30,169,82,0.12); }
+    html.dark .pill-pink { background: rgba(229,72,122,0.12); }
+    html.dark .pill-orange { background: rgba(224,136,39,0.12); }
 
-      /* ═══ NAV BAR ═══ */
-      .nav-bar {
-        background: var(--bg-card);
-        box-shadow: 0 -2px 16px rgba(0,0,0,0.04);
-        border-top: 1px solid var(--border-color);
-      }
-      html.dark .nav-bar { box-shadow: 0 -2px 16px rgba(0,0,0,0.2); }
+    /* ═══ PROGRESS BAR ═══ */
+    .progress-track {
+      height: 6px; border-radius: 3px;
+      background: var(--bg-card-alt);
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; border-radius: 3px;
+      transition: width 0.7s cubic-bezier(0.16,1,0.3,1);
+    }
 
-      /* ═══ LARGE TITLE ═══ */
-      .title-xl {
-        font-size: 28px; font-weight: 800; line-height: 1.15;
-        letter-spacing: -0.02em; color: var(--text-primary);
-      }
-      .title-lg {
-        font-size: 22px; font-weight: 700; line-height: 1.2;
-        letter-spacing: -0.01em; color: var(--text-primary);
-      }
+    /* ═══ PROGRESS DOTS ═══ */
+    .dot-progress { display: flex; gap: 4px; align-items: center; }
+    .dot-progress span {
+      width: 6px; height: 6px; border-radius: 50%;
+      transition: all 0.3s;
+    }
 
-      /* ═══ STAT NUMBER ═══ */
-      .stat-number {
-        font-size: 24px; font-weight: 800; line-height: 1;
-        color: var(--text-primary); letter-spacing: -0.02em;
-      }
-      .stat-unit {
-        font-size: 12px; font-weight: 500; color: var(--text-tertiary);
-        margin-left: 2px;
-      }
-      .stat-label {
-        font-size: 11px; font-weight: 500; color: var(--text-tertiary);
-        margin-top: 2px;
-      }
+    /* ═══ AVATAR ═══ */
+    .avatar-ring {
+      border: 2px solid var(--bg-body);
+      box-shadow: 0 0 0 1px var(--border-color);
+    }
 
-      /* ═══ PHOTO CARD ═══ */
-      .photo-card {
-        position: relative; overflow: hidden; border-radius: 20px;
-        background: var(--bg-card); box-shadow: var(--shadow-card);
+    /* ═══ NAV BAR ═══ */
+    .nav-bar {
+      background: var(--bg-card);
+      box-shadow: 0 -2px 16px rgba(0,0,0,0.04);
+      border-top: 1px solid var(--border-color);
+    }
+    html.dark .nav-bar { box-shadow: 0 -2px 16px rgba(0,0,0,0.2); }
+
+    /* ═══ LARGE TITLE ═══ */
+    .title-xl {
+      font-size: 28px; font-weight: 800; line-height: 1.15;
+      letter-spacing: -0.02em; color: var(--text-primary);
+    }
+    .title-lg {
+      font-size: 22px; font-weight: 700; line-height: 1.2;
+      letter-spacing: -0.01em; color: var(--text-primary);
+    }
+
+    /* ═══ STAT NUMBER ═══ */
+    .stat-number { font-size: 24px; font-weight: 800; line-height: 1; color: var(--text-primary); letter-spacing: -0.02em; }
+    .stat-unit { font-size: 12px; font-weight: 500; color: var(--text-tertiary); margin-left: 2px; }
+    .stat-label { font-size: 11px; font-weight: 500; color: var(--text-tertiary); margin-top: 2px; }
+
+    /* ═══ PHOTO CARD ═══ */
+    .photo-card {
+      position: relative; overflow: hidden; border-radius: 20px;
+      background: var(--bg-card); box-shadow: var(--shadow-card);
+    }
+    .photo-card img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-card .overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.15) 50%, transparent 100%);
+    }
+
+    /* ═══ ICON BTN ═══ */
+    .icon-btn {
+      width: 40px; height: 40px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg-card-alt); color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+    .icon-btn:active { background: var(--border-color); }
+
+    /* ═══ ACCENT BUTTON ═══ */
+    .btn-accent {
+      background: var(--color-accent); color: #FFFFFF; font-weight: 700;
+      border-radius: 14px; padding: 14px 28px; border: none;
+      box-shadow: 0 4px 16px rgba(74,108,247,0.25); transition: all 0.2s;
+    }
+    .btn-accent:active { transform: scale(0.97); }
+    html.dark .btn-accent { box-shadow: 0 4px 16px rgba(91,123,249,0.2); }
+
+    /* ═══ SPOILER ═══ */
+    .spoiler-body {
+      max-height: 0; opacity: 0; overflow: hidden;
+      transition: max-height 0.45s cubic-bezier(0.16,1,0.3,1), opacity 0.3s, margin 0.3s;
+    }
+    .spoiler-open .spoiler-body { max-height: 3000px; opacity: 1; margin-top: 12px; }
+
+    /* ═══ STAGGER ═══ */
+    .stagger > * { animation: slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both; }
+    .stagger > *:nth-child(1) { animation-delay: 0ms; }
+    .stagger > *:nth-child(2) { animation-delay: 50ms; }
+    .stagger > *:nth-child(3) { animation-delay: 100ms; }
+    .stagger > *:nth-child(4) { animation-delay: 150ms; }
+    .stagger > *:nth-child(5) { animation-delay: 200ms; }
+    .stagger > *:nth-child(6) { animation-delay: 250ms; }
+
+    /* ═══ SCROLLBAR ═══ */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* ═══ RESPONSIVE ═══ */
+    @media (max-width: 374px) { html { font-size: 14px; } }
+    @media (min-width: 768px) { .tablet-grid { grid-template-columns: repeat(3, 1fr) !important; } }
+    @media (min-width: 1024px) { .desktop-max { max-width: 480px; margin: 0 auto; } }
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+
+    html { overscroll-behavior: none; height: 100%; }
+
+    /* ═══ LINE CLAMP ═══ */
+    .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+    /* ═══ CREATIVE EXTRAS ═══ */
+    .mix-blend-overlay { mix-blend-mode: overlay; }
+    .glass-blur { backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); }
+    .noise-texture::after {
+      content: ''; position: absolute; inset: 0; opacity: 0.03; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ═══ COMPAT aliases ═══ */
+    .island-blur { background: var(--bg-card); box-shadow: 0 -2px 16px rgba(0,0,0,0.04); border-top: 1px solid var(--border-color); }
+    .glass-card { background: var(--bg-card); border-radius: 20px; box-shadow: var(--shadow-card); }
+
+    /* ═══ TOAST ═══ */
+    .animate-toast-out { pointer-events: none; }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@^19.2.4",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+        "react/": "https://esm.sh/react@^19.2.4/",
+        "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
+        "react-player": "https://esm.sh/react-player@^3.4.0",
+        "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.95.2",
+        "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3",
+        "vite": "https://esm.sh/vite@^7.3.1",
+        "react-markdown": "https://esm.sh/react-markdown@^10.1.0"
       }
-      .photo-card img { width: 100%; height: 100%; object-fit: cover; }
-      .photo-card .overlay {
-        position: absolute; inset: 0;
-        background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.15) 50%, transparent 100%);
-      }
-
-      /* ═══ ICON BTN ═══ */
-      .icon-btn {
-        width: 40px; height: 40px; border-radius: 14px;
-        display: flex; align-items: center; justify-content: center;
-        background: var(--bg-card-alt); color: var(--text-secondary);
-        transition: all 0.2s;
-      }
-      .icon-btn:active { background: var(--border-color); }
-
-      /* ═══ ACCENT BUTTON ═══ */
-      .btn-accent {
-        background: var(--color-accent); color: #FFFFFF;
-        font-weight: 700; border-radius: 14px;
-        padding: 14px 28px; border: none;
-        box-shadow: 0 4px 16px rgba(74,108,247,0.25);
-        transition: all 0.2s;
-      }
-      .btn-accent:active { transform: scale(0.97); }
-      html.dark .btn-accent { box-shadow: 0 4px 16px rgba(91,123,249,0.2); }
-
-      /* ═══ SPOILER ═══ */
-      .spoiler-body {
-        max-height: 0; opacity: 0; overflow: hidden;
-        transition: max-height 0.45s cubic-bezier(0.16,1,0.3,1), opacity 0.3s, margin 0.3s;
-      }
-      .spoiler-open .spoiler-body {
-        max-height: 3000px; opacity: 1; margin-top: 12px;
-      }
-
-      /* ═══ STAGGER ═══ */
-      .stagger > * { animation: slide-up 0.4s cubic-bezier(0.16,1,0.3,1) both; }
-      .stagger > *:nth-child(1) { animation-delay: 0ms; }
-      .stagger > *:nth-child(2) { animation-delay: 50ms; }
-      .stagger > *:nth-child(3) { animation-delay: 100ms; }
-      .stagger > *:nth-child(4) { animation-delay: 150ms; }
-      .stagger > *:nth-child(5) { animation-delay: 200ms; }
-      .stagger > *:nth-child(6) { animation-delay: 250ms; }
-
-      /* ═══ SCROLLBAR ═══ */
-      .no-scrollbar::-webkit-scrollbar { display: none; }
-      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-      /* ═══ RESPONSIVE ═══ */
-      @media (max-width: 374px) { html { font-size: 14px; } }
-      @media (min-width: 768px) { .tablet-grid { grid-template-columns: repeat(3, 1fr) !important; } }
-      @media (min-width: 1024px) { .desktop-max { max-width: 480px; margin: 0 auto; } }
-      @media (prefers-reduced-motion: reduce) {
-        * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-      }
-      html { overscroll-behavior: none; height: 100%; }
-
-      /* ═══ LINE CLAMP ═══ */
-      .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-      .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-      .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-
-      /* ═══ CREATIVE EXTRAS ═══ */
-      .mix-blend-overlay { mix-blend-mode: overlay; }
-      .glass-blur { backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); }
-      .noise-texture::after {
-        content: ''; position: absolute; inset: 0; opacity: 0.03; pointer-events: none;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-      }
-
-      /* ═══ COMPAT aliases ═══ */
-      .island-blur { background: var(--bg-card); box-shadow: 0 -2px 16px rgba(0,0,0,0.04); border-top: 1px solid var(--border-color); }
-      .glass-card { background: var(--bg-card); border-radius: 20px; box-shadow: var(--shadow-card); }
-    </style>
-    <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
-    "react-player": "https://esm.sh/react-player@^3.4.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.95.2",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "react-markdown": "https://esm.sh/react-markdown@^10.1.0"
-  }
-}
-</script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    }
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
 </html>
-

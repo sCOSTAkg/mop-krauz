@@ -1,64 +1,86 @@
-import React, { useState, createContext, useContext, ReactNode } from 'react';
-import Toast, { ToastData, ToastType } from '../components/Toast';
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import { SmartNav } from '../components/SmartNav';
+import { Toast } from '../components/Toast';
+import { useAppState } from '../hooks/useAppState';
+import { useSync } from '../hooks/useSync';
+import { useTheme } from '../hooks/useTheme';
+import { useAutoSave } from '../hooks/useAutoSave';
+import { useAuth } from '../hooks/useAuth';
+import { Tab } from '../types';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-interface ToastContextType {
-  showToast: (message: string, type?: ToastType, duration?: number) => void;
-}
-
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
-
-export const useToast = () => {
-  const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error('useToast must be used within MainLayout');
-  }
-  return context;
+const ROUTE_TO_TAB: Record<string, Tab> = {
+  '/': Tab.HOME, '/modules': Tab.MODULES, '/materials': Tab.MATERIALS,
+  '/rating': Tab.RATING, '/arena': Tab.ARENA, '/streams': Tab.STREAMS,
+  '/notebook': Tab.NOTEBOOK, '/habits': Tab.HABITS, '/profile': Tab.PROFILE,
+  '/admin': Tab.ADMIN_DASHBOARD,
 };
 
-interface MainLayoutProps {
-  children: ReactNode;
-}
+const TAB_TO_ROUTE: Record<Tab, string> = {
+  [Tab.HOME]: '/', [Tab.MODULES]: '/modules', [Tab.MATERIALS]: '/materials',
+  [Tab.RATING]: '/rating', [Tab.ARENA]: '/arena', [Tab.STREAMS]: '/streams',
+  [Tab.NOTEBOOK]: '/notebook', [Tab.HABITS]: '/habits', [Tab.PROFILE]: '/profile',
+  [Tab.ADMIN_DASHBOARD]: '/admin',
+};
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
-  const [toasts, setToasts] = useState<ToastData[]>([]);
-  const MAX_TOASTS = 3;
+export const MainLayout: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = useAppState();
 
-  const showToast = (message: string, type: ToastType = 'info', duration?: number) => {
-    const id = Math.random().toString(36).substring(7);
-    const newToast: ToastData = { id, message, type, duration };
+  const { syncData } = useSync({
+    userProgressRef: state.userProgressRef,
+    setModules: state.setModules, setMaterials: state.setMaterials,
+    setStreams: state.setStreams, setEvents: state.setEvents,
+    setScenarios: state.setScenarios, setNotifications: state.setNotifications,
+    setAllUsers: state.setAllUsers, setUserProgress: state.setUserProgress,
+  });
 
-    setToasts((prev) => {
-      const updated = [...prev, newToast];
-      // Лимит на 3 тоста
-      return updated.slice(-MAX_TOASTS);
-    });
-  };
+  const { handleLogin } = useAuth({
+    userProgress: state.userProgress, setUserProgress: state.setUserProgress,
+    syncData, addToast: state.addToast,
+  });
 
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
+  const effectiveTheme = useTheme(state.userProgress.theme);
+  useAutoSave(state.userProgress);
+
+  const activeTab = ROUTE_TO_TAB[location.pathname] || Tab.HOME;
+  const setActiveTab = (tab: Tab) => navigate(TAB_TO_ROUTE[tab] || '/');
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
-      <div className="min-h-screen bg-gray-50">
-        {children}
-      </div>
-      
-      {/* Toast Container */}
-      {toasts.length > 0 && (
+    <div className="flex flex-col h-[100dvh] bg-body/50 text-text-primary transition-colors duration-500 overflow-hidden relative">
+
+      {/* Toasts — z-[60] below modals, max 3 visible, conditional render */}
+      {state.toasts.length > 0 && (
         <div
-          className="fixed top-4 left-4 right-4 z-50 flex flex-col gap-3"
+          className="fixed top-[var(--safe-top)] left-4 right-4 z-[60] flex flex-col gap-2"
           style={{ pointerEvents: 'none' }}
         >
-          {toasts.map((toast) => (
-            <div key={toast.id} style={{ pointerEvents: 'auto' }}>
-              <Toast toast={toast} onClose={removeToast} />
-            </div>
+          {state.toasts.slice(0, 3).map(t => (
+            <Toast key={t.id} toast={t} onRemove={state.removeToast} onClick={() => state.handleNavigate(t.link)} />
           ))}
         </div>
       )}
-    </ToastContext.Provider>
+
+      {/* Main content with page transition */}
+      <main className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative z-10" key={location.pathname}>
+        <Outlet context={{ ...state, setActiveTab, handleLogin, syncData, effectiveTheme }} />
+      </main>
+
+      {/* Navigation */}
+      <SmartNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        role={state.userProgress.role}
+        adminSubTab={state.adminSubTab}
+        setAdminSubTab={(t) => state.setAdminSubTab(t)}
+        isLessonActive={!!state.selectedLessonId}
+        onExitLesson={() => state.setSelectedLessonId(null)}
+        notifications={state.notifications}
+        onClearNotifications={state.handleClearNotifications}
+        action={state.navAction}
+      />
+    </div>
   );
 };
-
-export default MainLayout;
