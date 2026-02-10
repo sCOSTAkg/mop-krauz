@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Tab, UserProgress, Lesson, Material, Stream, ArenaScenario, AppNotification, Module, AppConfig } from '../types';
 import { telegram } from '../services/telegramService';
 import { Avatar } from '../utils/avatar';
@@ -83,6 +83,29 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 }) => {
   const isAuth = u.isAuthenticated;
   const [programOpen, setProgramOpen] = useState(false);
+  const sectionsRef = useRef<HTMLDivElement>(null);
+
+  // Scroll reveal animation for section cards
+  useEffect(() => {
+    if (!sectionsRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('scroll-reveal');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+    );
+
+    const cards = sectionsRef.current.querySelectorAll('.section-card');
+    cards.forEach((card) => observer.observe(card));
+
+    return () => observer.disconnect();
+  }, []);
 
   const stats = useMemo(() => {
     const total = modules.reduce((a, m) => a + m.lessons.length, 0);
@@ -356,27 +379,28 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         {/* ═══ SECTIONS GRID — Photo Cards ═══ */}
         <div>
           <p className="text-[12px] font-semibold text-text-tertiary uppercase tracking-wider mb-2.5 px-1">Разделы</p>
-          <div className="grid grid-cols-2 tablet-grid gap-3 stagger">
+          <div ref={sectionsRef} className="grid grid-cols-2 tablet-grid gap-3 stagger">
             {[
-              { id: Tab.MODULES, title: 'Курс', sub: `${modules.length} модулей`, img: SECTION_IMAGES.MODULES, pill: 'pill-blue' },
-              { id: Tab.ARENA, title: 'Арена', sub: `${scenarios.length} сценариев`, img: SECTION_IMAGES.ARENA, pill: 'pill-pink' },
-              { id: Tab.HABITS, title: 'Привычки', sub: 'Дисциплина', img: SECTION_IMAGES.HABITS, pill: 'pill-green' },
-              { id: Tab.STREAMS, title: 'Эфиры', sub: `${streams.length} записей`, img: SECTION_IMAGES.STREAMS, pill: 'pill-orange' },
-              { id: Tab.NOTEBOOK, title: 'Блокнот', sub: `${u.notebook?.length || 0} записей`, img: SECTION_IMAGES.NOTEBOOK, pill: 'pill-gray' },
-              { id: Tab.MATERIALS, title: 'Материалы', sub: `${materials.length} файлов`, img: SECTION_IMAGES.MATERIALS, pill: 'pill-gray' },
+              { id: Tab.MODULES, title: 'Курс', sub: `${modules.length} модулей`, img: SECTION_IMAGES.MODULES, pill: 'pill-blue', pattern: 'pattern-modules' },
+              { id: Tab.ARENA, title: 'Арена', sub: `${scenarios.length} сценариев`, img: SECTION_IMAGES.ARENA, pill: 'pill-pink', pattern: 'pattern-arena' },
+              { id: Tab.HABITS, title: 'Привычки', sub: 'Дисциплина', img: SECTION_IMAGES.HABITS, pill: 'pill-green', pattern: 'pattern-habits' },
+              { id: Tab.STREAMS, title: 'Эфиры', sub: `${streams.length} записей`, img: SECTION_IMAGES.STREAMS, pill: 'pill-orange', pattern: 'pattern-streams' },
+              { id: Tab.NOTEBOOK, title: 'Блокнот', sub: `${u.notebook?.length || 0} записей`, img: SECTION_IMAGES.NOTEBOOK, pill: 'pill-gray', pattern: 'pattern-notebook' },
+              { id: Tab.MATERIALS, title: 'Материалы', sub: `${materials.length} файлов`, img: SECTION_IMAGES.MATERIALS, pill: 'pill-gray', pattern: 'pattern-materials' },
             ].map(item => (
               <button key={item.id} onClick={() => nav(item.id)}
-                className="photo-card text-left" style={{ aspectRatio: '4/3' }}>
-                <img src={item.img} alt="" loading="lazy" />
+                className={`section-card ${item.pattern} text-left`} style={{ aspectRatio: '4/3' }}>
+                <img src={item.img} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" />
                 <div className="overlay" />
+                <div className="glass-layer" />
                 {!isAuth && (
-                  <div className="absolute top-3 right-3">
+                  <div className="absolute top-3 right-3 z-10">
                     <span className="pill bg-black/20 text-white/60 text-[8px] !py-0 backdrop-blur-sm">Preview</span>
                   </div>
                 )}
-                <div className="absolute bottom-0 left-0 right-0 p-3.5">
-                  <h4 className="text-white font-bold text-[15px] leading-tight">{item.title}</h4>
-                  <p className="text-white/50 text-[10px] mt-1">{item.sub}</p>
+                <div className="content-layer absolute bottom-0 left-0 right-0 p-3.5">
+                  <h4 className="text-white font-bold text-[15px] leading-tight drop-shadow-lg">{item.title}</h4>
+                  <p className="text-white/70 text-[10px] mt-1 drop-shadow">{item.sub}</p>
                 </div>
               </button>
             ))}

@@ -199,6 +199,96 @@
       background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.15) 50%, transparent 100%);
     }
 
+    /* ═══ SECTION CARD WITH PATTERNS ═══ */
+    .section-card {
+      position: relative; overflow: hidden; border-radius: 20px;
+      transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), box-shadow 0.4s;
+      will-change: transform;
+    }
+
+    .section-card::before {
+      content: ''; position: absolute; inset: 0;
+      opacity: 0.12; pointer-events: none;
+      transition: opacity 0.4s, transform 0.6s cubic-bezier(0.16,1,0.3,1);
+      z-index: 1;
+    }
+    html.dark .section-card::before { opacity: 0.08; }
+
+    .section-card .glass-layer {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+      backdrop-filter: blur(12px) saturate(150%);
+      -webkit-backdrop-filter: blur(12px) saturate(150%);
+      z-index: 2;
+      transition: background 0.4s;
+    }
+    html.dark .section-card .glass-layer {
+      background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+    }
+
+    .section-card .content-layer {
+      position: relative; z-index: 3;
+    }
+
+    .section-card:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+    }
+    html.dark .section-card:hover {
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+    }
+
+    .section-card:hover::before {
+      opacity: 0.2;
+      transform: scale(1.1) rotate(5deg);
+    }
+    html.dark .section-card:hover::before { opacity: 0.15; }
+
+    .section-card:active {
+      transform: translateY(-2px) scale(0.99);
+    }
+
+    /* Pattern backgrounds for each section */
+    .section-card.pattern-modules::before {
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 10l5 15h16l-13 9 5 15-13-9-13 9 5-15-13-9h16z' fill='%234A6CF7' fill-opacity='0.3'/%3E%3C/svg%3E");
+      background-size: 60px 60px;
+    }
+
+    .section-card.pattern-arena::before {
+      background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 5l3 10 10 3-10 3-3 10-3-10-10-3 10-3z' fill='%23E5487A' fill-opacity='0.4'/%3E%3C/svg%3E");
+      background-size: 40px 40px;
+    }
+
+    .section-card.pattern-habits::before {
+      background-image: url("data:image/svg+xml,%3Csvg width='50' height='50' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='10' cy='10' r='3' fill='%231EA952' fill-opacity='0.35'/%3E%3Ccircle cx='40' cy='10' r='3' fill='%231EA952' fill-opacity='0.35'/%3E%3Ccircle cx='25' cy='40' r='3' fill='%231EA952' fill-opacity='0.35'/%3E%3C/svg%3E");
+      background-size: 50px 50px;
+    }
+
+    .section-card.pattern-streams::before {
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15 30h30M15 20h30M15 40h20' stroke='%23E08827' stroke-opacity='0.35' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-size: 60px 60px;
+    }
+
+    .section-card.pattern-notebook::before {
+      background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10h20M10 20h15M10 30h20' stroke='%236B7084' stroke-opacity='0.3' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-size: 40px 40px;
+    }
+
+    .section-card.pattern-materials::before {
+      background-image: url("data:image/svg+xml,%3Csvg width='50' height='50' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='10' y='10' width='15' height='20' fill='%236B7084' fill-opacity='0.25' rx='2'/%3E%3Crect x='28' y='15' width='12' height='15' fill='%236B7084' fill-opacity='0.25' rx='2'/%3E%3C/svg%3E");
+      background-size: 50px 50px;
+    }
+
+    /* Scroll reveal animation */
+    @keyframes scroll-reveal {
+      0% { opacity: 0; transform: translateY(30px) scale(0.95); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .section-card.scroll-reveal {
+      animation: scroll-reveal 0.6s cubic-bezier(0.16,1,0.3,1) both;
+    }
+
     /* ═══ ICON BTN ═══ */
     .icon-btn {
       width: 40px; height: 40px; border-radius: 14px;
