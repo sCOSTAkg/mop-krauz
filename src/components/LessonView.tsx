@@ -34,7 +34,7 @@ const MarkdownToolbar = ({ onInsert }: { onInsert: (tag: string, placeholder?: s
 );
 
 const EditSection = ({ title, isOpen, onToggle, children, icon }: any) => (
-  <div className={`bg-card border ${isOpen ? 'border-[#6C5DD3]/30' : 'border-border-color'} rounded-2xl overflow-hidden transition-all duration-300`}>
+  <div className={`bg-card border ${isOpen ? 'border-accent/30' : 'border-border-color'} rounded-2xl overflow-hidden transition-all duration-300`}>
     <button onClick={onToggle} className="w-full flex items-center justify-between p-4 active:bg-body/50 transition-colors">
       <div className="flex items-center gap-3">
          <div className="w-8 h-8 rounded-xl bg-body flex items-center justify-center text-lg">{icon}</div>
@@ -153,27 +153,27 @@ export const LessonView: React.FC<LessonViewProps> = ({
             <div className="sticky top-0 z-50 px-4 pt-[calc(var(--safe-top)+10px)] pb-3 flex items-center justify-between bg-surface/90 backdrop-blur-md border-b border-border-color">
                 <button onClick={() => setIsEditing(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-[#FF3B30]">Отмена</button>
                 <span className="text-sm font-semibold text-text-primary">Редактор</span>
-                <button onClick={handleSaveLesson} className="px-4 py-2 rounded-xl bg-[#6C5DD3] text-sm font-semibold text-white">Сохранить</button>
+                <button onClick={handleSaveLesson} className="px-4 py-2 rounded-xl bg-accent text-sm font-semibold text-white">Сохранить</button>
             </div>
             <div className="p-4 space-y-3 pb-40 overflow-y-auto">
                 <EditSection title="Основная информация" icon="📋" isOpen={openSection === 'info'} onToggle={() => setOpenSection(openSection === 'info' ? 'content' : 'info')}>
                     <div className="space-y-3">
                         <div>
                             <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Название</label>
-                            <input value={editedLesson.title} onChange={(e) => setEditedLesson({...editedLesson, title: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm font-medium text-text-primary outline-none focus:border-[#6C5DD3]" placeholder="Название" />
+                            <input value={editedLesson.title} onChange={(e) => setEditedLesson({...editedLesson, title: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm font-medium text-text-primary outline-none focus:border-accent" placeholder="Название" />
                         </div>
                         <div>
                             <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Описание</label>
-                            <textarea value={editedLesson.description} onChange={(e) => setEditedLesson({...editedLesson, description: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm text-text-primary outline-none focus:border-[#6C5DD3] h-20 resize-none" placeholder="Описание" />
+                            <textarea value={editedLesson.description} onChange={(e) => setEditedLesson({...editedLesson, description: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm text-text-primary outline-none focus:border-accent h-20 resize-none" placeholder="Описание" />
                         </div>
                         <div>
                             <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Видео (YouTube)</label>
-                            <input value={editedLesson.videoUrl || ''} onChange={(e) => setEditedLesson({...editedLesson, videoUrl: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm font-mono text-[#6C5DD3] outline-none focus:border-[#6C5DD3]" placeholder="https://youtube.com/..." />
+                            <input value={editedLesson.videoUrl || ''} onChange={(e) => setEditedLesson({...editedLesson, videoUrl: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm font-mono text-accent outline-none focus:border-accent" placeholder="https://youtube.com/..." />
                         </div>
                     </div>
                 </EditSection>
                 <EditSection title="Контент (Markdown)" icon="📝" isOpen={openSection === 'content'} onToggle={() => setOpenSection(openSection === 'content' ? 'homework' : 'content')}>
-                    <div className="bg-body border border-border-color rounded-xl p-2 focus-within:border-[#6C5DD3] transition-colors">
+                    <div className="bg-body border border-border-color rounded-xl p-2 focus-within:border-accent transition-colors">
                         <MarkdownToolbar onInsert={insertMarkdown} />
                         <textarea id="contentEditor" value={editedLesson.content} onChange={(e) => setEditedLesson({...editedLesson, content: e.target.value})} className="w-full bg-transparent text-sm font-mono text-text-primary outline-none h-[60vh] leading-relaxed resize-y p-2" placeholder="# Заголовок" />
                     </div>
@@ -184,13 +184,13 @@ export const LessonView: React.FC<LessonViewProps> = ({
                             <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Формат</label>
                             <div className="grid grid-cols-4 gap-2">
                                 {['TEXT', 'PHOTO', 'VIDEO', 'FILE'].map(t => (
-                                    <button key={t} onClick={() => setEditedLesson({...editedLesson, homeworkType: t as HomeworkType})} className={`py-2.5 rounded-xl text-xs font-semibold border transition-all ${editedLesson.homeworkType === t ? 'bg-[#6C5DD3] text-white border-[#6C5DD3]' : 'border-border-color text-text-secondary'}`}>{t}</button>
+                                    <button key={t} onClick={() => setEditedLesson({...editedLesson, homeworkType: t as HomeworkType})} className={`py-2.5 rounded-xl text-xs font-semibold border transition-all ${editedLesson.homeworkType === t ? 'bg-accent text-white border-accent' : 'border-border-color text-text-secondary'}`}>{t}</button>
                                 ))}
                             </div>
                         </div>
                         <div>
                             <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Задание</label>
-                            <textarea value={editedLesson.homeworkTask} onChange={(e) => setEditedLesson({...editedLesson, homeworkTask: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm text-text-primary outline-none focus:border-[#6C5DD3] h-24 resize-none" placeholder="Описание задания..." />
+                            <textarea value={editedLesson.homeworkTask} onChange={(e) => setEditedLesson({...editedLesson, homeworkTask: e.target.value})} className="w-full bg-body border border-border-color p-3 rounded-xl text-sm text-text-primary outline-none focus:border-accent h-24 resize-none" placeholder="Описание задания..." />
                         </div>
                         <div className="p-4 rounded-xl border border-[#FF3B30]/20 bg-[#FF3B30]/5 space-y-3">
                             <label className="text-xs font-medium text-[#FF3B30] flex items-center gap-2">
@@ -201,7 +201,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
                         </div>
                         <div>
                             <label className="text-xs font-medium text-text-secondary ml-1 mb-1 block">Награда (XP)</label>
-                            <input type="number" value={editedLesson.xpReward} onChange={(e) => { const val = parseInt(e.target.value); setEditedLesson({...editedLesson, xpReward: isNaN(val) ? 0 : val}); }} className="w-full bg-body border border-border-color p-3 rounded-xl text-lg font-bold text-[#6C5DD3] outline-none focus:border-[#6C5DD3] text-center" />
+                            <input type="number" value={editedLesson.xpReward} onChange={(e) => { const val = parseInt(e.target.value); setEditedLesson({...editedLesson, xpReward: isNaN(val) ? 0 : val}); }} className="w-full bg-body border border-border-color p-3 rounded-xl text-lg font-bold text-accent outline-none focus:border-accent text-center" />
                         </div>
                     </div>
                 </EditSection>
@@ -227,9 +227,9 @@ export const LessonView: React.FC<LessonViewProps> = ({
             </div>
             <div className="flex items-center gap-2">
                 {isAdmin && (
-                    <button onClick={() => setIsEditing(true)} className="w-10 h-10 rounded-xl bg-[#6C5DD3]/10 text-[#6C5DD3] flex items-center justify-center text-sm">✎</button>
+                    <button onClick={() => setIsEditing(true)} className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center text-sm">✎</button>
                 )}
-                <div className="px-3 py-1.5 rounded-lg bg-[#6C5DD3]/10 text-[#6C5DD3] text-xs font-bold">+{lesson.xpReward}</div>
+                <div className="px-3 py-1.5 rounded-lg bg-accent/10 text-accent text-xs font-bold">+{lesson.xpReward}</div>
             </div>
         </div>
 
@@ -241,7 +241,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
                         key={l.id}
                         className={`h-1 flex-1 rounded-full transition-all duration-300 ${
                             userProgress.completedLessonIds.includes(l.id) ? 'bg-[#34C759]' :
-                            l.id === lesson.id ? 'bg-[#6C5DD3]' : 'bg-body'
+                            l.id === lesson.id ? 'bg-accent' : 'bg-body'
                         }`}
                     />
                 ))}
@@ -253,10 +253,10 @@ export const LessonView: React.FC<LessonViewProps> = ({
 
         {/* Video */}
         {videoUrl && (
-            <div className="relative rounded-2xl overflow-hidden aspect-video bg-card border border-border-color shadow-sm">
+            <div className="relative overflow-hidden aspect-video bg-black -mx-4">
                 {!isVideoReady && (
                     <div className="absolute inset-0 flex items-center justify-center bg-card z-10">
-                        <div className="w-8 h-8 border-2 border-border-color border-t-[#6C5DD3] rounded-full animate-spin"></div>
+                        <div className="w-8 h-8 border-2 border-border-color border-t-[var(--color-accent)] rounded-full animate-spin"></div>
                     </div>
                 )}
                 <VideoPlayer url={videoUrl} width="100%" height="100%" controls={true} onReady={() => setIsVideoReady(true)} config={{ youtube: { playerVars: { origin: window.location.origin }}}} />
@@ -274,14 +274,14 @@ export const LessonView: React.FC<LessonViewProps> = ({
                     <ReactMarkdown
                         components={{
                             h1: ({node, ...p}) => <h1 className="text-xl font-bold mb-4 text-text-primary" {...p} />,
-                            h2: ({node, ...p}) => <h2 className="text-lg font-semibold mt-6 mb-3 text-text-primary border-l-3 border-[#6C5DD3] pl-3" {...p} />,
+                            h2: ({node, ...p}) => <h2 className="text-lg font-semibold mt-6 mb-3 text-text-primary border-l-3 border-accent pl-3" {...p} />,
                             h3: ({node, ...p}) => <h3 className="text-base font-semibold mt-4 mb-2 text-text-primary" {...p} />,
                             p: ({node, ...p}) => <p className="mb-4 leading-relaxed text-text-primary/85 text-[15px]" {...p} />,
-                            ul: ({node, ...p}) => <ul className="list-disc pl-5 mb-4 space-y-1.5 marker:text-[#6C5DD3]" {...p} />,
+                            ul: ({node, ...p}) => <ul className="list-disc pl-5 mb-4 space-y-1.5 marker:text-accent" {...p} />,
                             ol: ({node, ...p}) => <ol className="list-decimal pl-5 mb-4 space-y-1.5" {...p} />,
-                            blockquote: ({node, ...p}) => <blockquote className="border-l-3 border-[#6C5DD3] bg-[#6C5DD3]/5 p-4 rounded-xl italic my-4 text-text-secondary" {...p} />,
+                            blockquote: ({node, ...p}) => <blockquote className="border-l-3 border-accent bg-accent/5 p-4 rounded-xl italic my-4 text-text-secondary" {...p} />,
                             code: ({node, ...p}: any) => p.inline
-                                ? <code className="bg-body px-1.5 py-0.5 rounded text-[#6C5DD3] text-sm font-mono" {...p} />
+                                ? <code className="bg-body px-1.5 py-0.5 rounded text-accent text-sm font-mono" {...p} />
                                 : <code className="block bg-body p-4 rounded-xl text-sm font-mono overflow-x-auto my-4" {...p} />,
                             strong: ({node, ...p}) => <strong className="font-bold text-text-primary" {...p} />,
                         }}
@@ -310,9 +310,9 @@ export const LessonView: React.FC<LessonViewProps> = ({
              </div>
              <div className="flex gap-2">
                  <input value={questionText} onChange={(e) => setQuestionText(e.target.value)} placeholder="Ваш вопрос..." disabled={questionsRemaining <= 0 || isAsking}
-                    className="flex-1 bg-body border border-border-color rounded-xl px-4 py-3 text-sm focus:border-[#6C5DD3] outline-none disabled:opacity-50 transition-all" />
+                    className="flex-1 bg-body border border-border-color rounded-xl px-4 py-3 text-sm focus:border-accent outline-none disabled:opacity-50 transition-all" />
                  <button onClick={handleAskQuestion} disabled={questionsRemaining <= 0 || isAsking || !questionText.trim()}
-                    className="bg-[#6C5DD3] text-white rounded-xl w-11 h-11 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50">
+                    className="bg-accent text-white rounded-xl w-11 h-11 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50">
                     {isAsking ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>}
                  </button>
              </div>
@@ -323,7 +323,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
             <div className="bg-card rounded-2xl border border-border-color overflow-hidden">
                 <div className="p-5 space-y-4">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#6C5DD3]/10 flex items-center justify-center text-xl">
+                        <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-xl">
                             {lesson.homeworkType === 'VIDEO' ? '📹' : lesson.homeworkType === 'PHOTO' ? '📸' : lesson.homeworkType === 'FILE' ? '📎' : '✍️'}
                         </div>
                         <div>
@@ -332,14 +332,14 @@ export const LessonView: React.FC<LessonViewProps> = ({
                         </div>
                     </div>
 
-                    <div className="bg-body p-4 rounded-xl text-sm text-text-secondary leading-relaxed border-l-3 border-[#6C5DD3]">
+                    <div className="bg-body p-4 rounded-xl text-sm text-text-secondary leading-relaxed border-l-3 border-accent">
                          {lesson.homeworkTask}
                     </div>
 
                     {lesson.homeworkType === 'TEXT' ? (
-                        <textarea value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="Ваш ответ..." className="w-full bg-body text-text-primary p-4 rounded-xl border border-border-color focus:border-[#6C5DD3] outline-none h-40 resize-none text-sm transition-all" />
+                        <textarea value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="Ваш ответ..." className="w-full bg-body text-text-primary p-4 rounded-xl border border-border-color focus:border-accent outline-none h-40 resize-none text-sm transition-all" />
                     ) : (
-                        <div onClick={() => fileInputRef.current?.click()} className={`w-full h-28 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all ${selectedFile ? 'border-[#34C759] bg-[#34C759]/5' : 'border-border-color hover:border-[#6C5DD3] bg-body'}`}>
+                        <div onClick={() => fileInputRef.current?.click()} className={`w-full h-28 border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all ${selectedFile ? 'border-[#34C759] bg-[#34C759]/5' : 'border-border-color hover:border-accent bg-body'}`}>
                             <input type="file" ref={fileInputRef} onChange={e => {
                                 const f = e.target.files?.[0];
                                 if(f) { const r = new FileReader(); r.onloadend = () => setSelectedFile(r.result as string); r.readAsDataURL(f); }
@@ -362,7 +362,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
                 <button
                     onClick={handleSubmit}
                     disabled={isSubmitting || (lesson.homeworkType === 'TEXT' ? !inputText.trim() : !selectedFile)}
-                    className="w-full py-4 bg-[#6C5DD3] text-white font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-accent text-white font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                     {isSubmitting ? (
                         <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Проверка...</>
@@ -391,7 +391,7 @@ export const LessonView: React.FC<LessonViewProps> = ({
             <button
                 onClick={() => { if (nextLesson) { onNavigate(nextLesson.id); telegram.haptic('selection'); } }}
                 disabled={!nextLesson}
-                className={`py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${!nextLesson ? 'opacity-30 bg-body text-text-secondary' : 'bg-[#6C5DD3] text-white active:scale-95'}`}
+                className={`py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${!nextLesson ? 'opacity-30 bg-body text-text-secondary' : 'bg-accent text-white active:scale-95'}`}
             >
                 Далее <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
