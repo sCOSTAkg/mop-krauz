@@ -40,7 +40,7 @@ async function syncUser(user: any) {
     const r = await fetch(`https://api.airtable.com/v0/${_AB}/Users?filterByFormula={TelegramID}="${user.id}"&maxRecords=1`, {
       headers: { Authorization: `Bearer ${_AK}` },
     });
-    const d = await r.json();
+    const d: any = await r.json();
     if (d.records?.length > 0) {
       await fetch(`https://api.airtable.com/v0/${_AB}/Users/${d.records[0].id}`, {
         method: 'PATCH', headers: { Authorization: `Bearer ${_AK}`, 'Content-Type': 'application/json' },
