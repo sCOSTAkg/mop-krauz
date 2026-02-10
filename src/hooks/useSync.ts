@@ -3,9 +3,10 @@ import { useEffect, useRef, useCallback } from 'react';
 import { UserProgress, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification } from '../types';
 import { Backend } from '../services/backendService';
 import { Logger } from '../services/logger';
+import { supabaseService, RealtimePayload } from '../services/supabaseService';
 
 // ─── Config ─────────────────────────────────────────────────────
-const SYNC_INTERVAL = 120_000;       // 2 minutes
+const SYNC_INTERVAL = 120_000;       // 2 minutes (fallback for when realtime is not available)
 const FAST_SYNC_INTERVAL = 30_000;   // 30s after user action
 const MAX_CONSECUTIVE_ERRORS = 3;
 
@@ -139,10 +140,60 @@ export function useSync(opts: UseSyncOptions) {
     intervalRef.current = setInterval(() => syncData(), ms);
   }, [syncData]);
 
-  // ─── Initial sync + periodic ────────────────────────────────
+  // ─── Real-time sync setup ───────────────────────────────────
+  useEffect(() => {
+    const unsubscribers: Array<() => void> = [];
+
+    if (supabaseService.isReady()) {
+      Logger.log('🚀 Setting up real-time sync...');
+
+      // Handle real-time updates
+      const handleRealtimeUpdate = (payload: RealtimePayload) => {
+        Logger.log(`📡 Real-time ${payload.eventType} on ${payload.table}`);
+        // Trigger immediate sync when data changes
+        syncData(true);
+      };
+
+      // Subscribe to all relevant tables
+      const tables = ['modules', 'materials', 'streams', 'events', 'scenarios', 'notifications'];
+      tables.forEach(table => {
+        const unsub = supabaseService.subscribe(table, handleRealtimeUpdate);
+        unsubscribers.push(unsub);
+      });
+
+      // Subscribe to user-specific updates
+      const currentUser = opts.userProgressRef.current;
+      if (currentUser.isAuthenticated && currentUser.telegramId) {
+        const unsub = supabaseService.subscribe(
+          'users',
+          handleRealtimeUpdate,
+          { column: 'telegram_id', value: currentUser.telegramId }
+        );
+        unsubscribers.push(unsub);
+      }
+
+      Logger.log('✅ Real-time subscriptions active');
+    } else {
+      Logger.log('⚠️ Real-time sync not available - using polling mode');
+    }
+
+    return () => {
+      // Cleanup all subscriptions
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [opts.userProgressRef.current.telegramId, syncData]);
+
+  // ─── Initial sync + periodic (fallback) ─────────────────────
   useEffect(() => {
     syncData(true); // Force full sync on mount
-    startInterval(SYNC_INTERVAL);
+
+    // If real-time is not available, use polling as fallback
+    if (!supabaseService.isReady()) {
+      Logger.log('📊 Starting polling mode (interval: 2 min)');
+      startInterval(SYNC_INTERVAL);
+    } else {
+      Logger.log('✅ Real-time mode active - polling disabled');
+    }
 
     // Sync when tab becomes visible again
     const handleVisibility = () => {
@@ -157,9 +208,10 @@ export function useSync(opts: UseSyncOptions) {
     const handleBeforeUnload = () => {
       const user = opts.userProgressRef.current;
       if (user.isAuthenticated) {
-        // Use sendBeacon for reliability on tab close
+        // Sync to both Airtable and Supabase
         try {
           navigator.sendBeacon?.('/api/sync', JSON.stringify({ user }));
+          supabaseService.syncUser(user);
         } catch { /* fallback is localStorage, already saved */ }
       }
     };
