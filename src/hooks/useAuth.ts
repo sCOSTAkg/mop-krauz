@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { UserProgress } from '../types';
 import { Backend } from '../services/backendService';
+import { telegram } from '../services/telegramService';
 
 interface UseAuthOptions {
   userProgress: UserProgress;
@@ -19,6 +20,29 @@ export function useAuth({ userProgress, setUserProgress, syncData, addToast }: U
     await syncData();
     addToast('success', 'С возвращением, боец!');
   }, [userProgress, setUserProgress, syncData, addToast]);
+
+  // ─── Auto-login via Telegram TWA ────────────────────────────
+  useEffect(() => {
+    if (userProgress.isAuthenticated) return;
+    if (!telegram.isTWA) return;
+
+    const authData = telegram.getAuthData();
+    if (!authData) return;
+
+    // Auto-login with Telegram user data
+    const tgUser = {
+      name: authData.name || 'Спартанец',
+      telegramId: authData.telegramId,
+      username: authData.username,
+      photoUrl: authData.photoUrl,
+      isPremium: authData.isPremium,
+      authSource: 'telegram_twa' as const,
+    };
+
+    handleLogin(tgUser).catch(err => {
+      console.error('TWA auto-login failed:', err);
+    });
+  }, [userProgress.isAuthenticated, handleLogin]);
 
   return { handleLogin };
 }
