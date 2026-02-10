@@ -1,7 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/((?!assets|icon-|manifest|service-worker|metadata|covers).*)",
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/((?!api|assets|icon-|manifest|service-worker|metadata|covers).*)",
       "destination": "/index.html"
     }
   ],
