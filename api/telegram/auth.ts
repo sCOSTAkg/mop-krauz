@@ -1,6 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
 
+interface AirtableRecord {
+  id: string;
+  [key: string]: any;
+}
+
+interface AirtableResponse {
+  records?: AirtableRecord[];
+  error?: {
+    type: string;
+    message: string;
+  };
+}
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '7732365646:AAEFDAjpOFlFwliHdV7nN490PT7gEQx00zg';
 const _AK = process.env.AIRTABLE_API_KEY || Buffer.from('cGF0RTdRMXhoOHNTaVVnNDcuYzM3MTY4MDljZDk5MGY2ZmU0NjdhNTYwZTFmYTk4NDRhYjQyNDgwYWUzMDA0MWExNGYwODE4YjczNjk4M2FiMA==','base64').toString();
 const _AB = process.env.AIRTABLE_BASE_ID || 'appwwnfghmzEQgSby';
@@ -40,7 +53,7 @@ async function syncUser(user: any) {
     const r = await fetch(`https://api.airtable.com/v0/${_AB}/Users?filterByFormula={TelegramID}="${user.id}"&maxRecords=1`, {
       headers: { Authorization: `Bearer ${_AK}` },
     });
-    const d: any = await r.json();
+    const d: AirtableResponse = await r.json();
     if (d.records?.length > 0) {
       await fetch(`https://api.airtable.com/v0/${_AB}/Users/${d.records[0].id}`, {
         method: 'PATCH', headers: { Authorization: `Bearer ${_AK}`, 'Content-Type': 'application/json' },
