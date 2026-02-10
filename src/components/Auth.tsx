@@ -143,8 +143,9 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, existingUsers = [] }) => {
 
     if (hasError) return;
 
-    // Admin Bypass
-    if (cleanUsername === 'admin' && cleanPassword === '55555sa5') {
+    // Admin login: credentials should be validated server-side via environment variable
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || '';
+    if (adminPassword && cleanUsername === 'admin' && cleanPassword === adminPassword) {
         telegram.haptic('success');
         onLogin({
             role: 'ADMIN',

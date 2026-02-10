@@ -3,6 +3,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { UserProgress, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification } from '../types';
 import { Backend } from '../services/backendService';
 import { Logger } from '../services/logger';
+import { Storage } from '../services/storage';
 
 // ─── Config ─────────────────────────────────────────────────────
 const SYNC_INTERVAL = 120_000;       // 2 minutes
@@ -153,14 +154,13 @@ export function useSync(opts: UseSyncOptions) {
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // Sync before tab close (user data only)
+    // Ensure user data is persisted to localStorage before tab close
     const handleBeforeUnload = () => {
       const user = opts.userProgressRef.current;
       if (user.isAuthenticated) {
-        // Use sendBeacon for reliability on tab close
         try {
-          navigator.sendBeacon?.('/api/sync', JSON.stringify({ user }));
-        } catch { /* fallback is localStorage, already saved */ }
+          Storage.set('progress', user);
+        } catch { /* localStorage save is best-effort on unload */ }
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);

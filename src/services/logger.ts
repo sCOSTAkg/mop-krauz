@@ -11,10 +11,27 @@ class LoggerService {
     return `[${timestamp}] [${level}] ${message}`;
   }
 
-  log(level: LogLevel, message: string, data?: any) {
-    const logEntry = { level, message, timestamp: new Date().toISOString(), data };
+  log(messageOrLevel: string, dataOrMessage?: any, data?: any) {
+    const validLevels: LogLevel[] = ['INFO', 'WARN', 'ERROR', 'DEBUG'];
+    let level: LogLevel;
+    let message: string;
+    let logData: any;
+
+    if (validLevels.includes(messageOrLevel as LogLevel) && typeof dataOrMessage === 'string') {
+      // Called as log(level, message, data?)
+      level = messageOrLevel as LogLevel;
+      message = dataOrMessage;
+      logData = data;
+    } else {
+      // Called as log(message, data?) — shortcut for INFO level
+      level = 'INFO';
+      message = messageOrLevel;
+      logData = dataOrMessage;
+    }
+
+    const logEntry = { level, message, timestamp: new Date().toISOString(), data: logData };
     this.logs.unshift(logEntry);
-    
+
     if (this.logs.length > this.maxLogs) {
       this.logs.pop();
     }
@@ -27,7 +44,7 @@ class LoggerService {
       DEBUG: 'color: #9ca3af; font-weight: bold'
     };
 
-    console.log(`%c${level}`, styles[level], message, data || '');
+    console.log(`%c${level}`, styles[level], message, logData || '');
   }
 
   info(message: string, data?: any) { this.log('INFO', message, data); }

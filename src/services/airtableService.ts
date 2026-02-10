@@ -3,12 +3,9 @@ import { UserProgress, Module, Lesson, Material, Stream, CalendarEvent, ArenaSce
 import { Logger } from './logger';
 
 // ─── Configuration ──────────────────────────────────────────────
-// Credentials: env vars take priority, fallback to built-in defaults (base64-encoded)
-const _d = (s: string) => atob(s);
-const _FALLBACK_PAT = _d('cGF0RTdRMXhoOHNTaVVnNDcuYzM3MTY4MDljZDk5MGY2ZmU0NjdhNTYwZTFmYTk4NDRhYjQyNDgwYWUzMDA0MWExNGYwODE4YjczNjk4M2FiMA==');
-const _FALLBACK_BASE = _d('YXBwd3duZmdobXpFUWdTYnk=');
-const DEFAULT_PAT = import.meta.env.VITE_AIRTABLE_PAT || _FALLBACK_PAT;
-const DEFAULT_BASE_ID = import.meta.env.VITE_AIRTABLE_BASE_ID || _FALLBACK_BASE;
+// Credentials must be provided via environment variables (VITE_AIRTABLE_PAT, VITE_AIRTABLE_BASE_ID)
+const DEFAULT_PAT = import.meta.env.VITE_AIRTABLE_PAT || '';
+const DEFAULT_BASE_ID = import.meta.env.VITE_AIRTABLE_BASE_ID || '';
 
 const TABLES = {
   MODULES: import.meta.env.VITE_AIRTABLE_MODULES_TABLE || 'Modules',
