@@ -2,6 +2,7 @@
 import { UserProgress, AppConfig, Module, Material, Stream, CalendarEvent, ArenaScenario, AppNotification } from '../types';
 import { Logger } from './logger';
 import { airtableService } from './airtableService';
+import { supabaseService } from './supabaseService';
 import { Storage } from './storage';
 
 // ─── Retry helper ───────────────────────────────────────────────
@@ -142,11 +143,26 @@ export const Backend = {
   // ─── User Sync ──────────────────────────────────────────────
   async syncUser(user: UserProgress): Promise<UserProgress> {
     try {
-      if (!airtableService.isConfigured()) return user;
+      // Sync to both Airtable and Supabase in parallel
+      const [airtableSuccess] = await Promise.allSettled([
+        airtableService.isConfigured()
+          ? withRetry(() => airtableService.syncUserProgress(user))
+          : Promise.resolve(false),
+        supabaseService.isReady()
+          ? supabaseService.syncUser(user)
+          : Promise.resolve(),
+      ]);
 
-      const success = await withRetry(() => airtableService.syncUserProgress(user));
-      if (success && user.telegramId) {
+      // Load fresh data from Airtable
+      if (airtableSuccess.status === 'fulfilled' && airtableSuccess.value && user.telegramId) {
         const fresh = await airtableService.loadUserProgress(user.telegramId);
+        if (fresh) return fresh;
+      }
+
+      // Fallback to Supabase if Airtable fails
+      if (airtableSuccess.status === 'rejected' && supabaseService.isReady() && user.telegramId) {
+        Logger.log('⚠️ Airtable sync failed, trying Supabase...');
+        const fresh = await supabaseService.fetchUser(user.telegramId);
         if (fresh) return fresh;
       }
     } catch (e) {
@@ -157,11 +173,17 @@ export const Backend = {
 
   async saveUser(user: UserProgress): Promise<void> {
     try {
-      if (airtableService.isConfigured()) {
-        await withRetry(() => airtableService.syncUserProgress(user));
-      }
+      // Save to both Airtable and Supabase in parallel
+      await Promise.allSettled([
+        airtableService.isConfigured()
+          ? withRetry(() => airtableService.syncUserProgress(user))
+          : Promise.resolve(),
+        supabaseService.isReady()
+          ? supabaseService.syncUser(user)
+          : Promise.resolve(),
+      ]);
     } catch (e) {
-      Logger.log('⚠️ Failed to save user to Airtable', e);
+      Logger.log('⚠️ Failed to save user', e);
     }
   },
 
